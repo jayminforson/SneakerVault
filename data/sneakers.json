@@ -1,0 +1,146 @@
+[
+  {
+    "id": "air-max-90",
+    "name": "Air Max 90",
+    "brand": "Nike",
+    "description": "The Air Max 90 stays true to its OG running roots with the iconic Waffle outsole, stitched overlays and classic TPU details.",
+    "price": 899.99,
+    "originalPrice": 1099.99,
+    "rating": 4.8,
+    "reviewCount": 2341,
+    "heroImage": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=800&q=80",
+    "colors": [
+      { "name": "White/Black", "hex": "#FFFFFF", "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80" },
+      { "name": "Infrared", "hex": "#FF4040", "image": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&q=80" },
+      { "name": "Triple Black", "hex": "#1A1A1A", "image": "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": true, "stock": 12 },
+      { "size": "US 7", "available": true, "stock": 18 },
+      { "size": "US 8", "available": true, "stock": 25 },
+      { "size": "US 9", "available": true, "stock": 30 },
+      { "size": "US 10", "available": true, "stock": 22 },
+      { "size": "US 11", "available": true, "stock": 15 },
+      { "size": "US 12", "available": false, "stock": 0 }
+    ],
+    "tags": ["Popular", "Running", "Classic"]
+  },
+  {
+    "id": "ultraboost-22",
+    "name": "Ultraboost 22",
+    "brand": "Adidas",
+    "description": "These Ultraboost running shoes feature a responsive BOOST midsole that returns energy with every stride.",
+    "price": 1299.99,
+    "heroImage": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800&q=80",
+    "colors": [
+      { "name": "Core Black", "hex": "#0A0A0A", "image": "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&q=80" },
+      { "name": "Cloud White", "hex": "#F5F5F5", "image": "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&q=80" },
+      { "name": "Solar Red", "hex": "#E8372C", "image": "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": true, "stock": 8 },
+      { "size": "US 7", "available": true, "stock": 14 },
+      { "size": "US 8", "available": true, "stock": 20 },
+      { "size": "US 9", "available": true, "stock": 28 },
+      { "size": "US 10", "available": true, "stock": 24 },
+      { "size": "US 11", "available": true, "stock": 18 },
+      { "size": "US 12", "available": true, "stock": 10 }
+    ],
+    "tags": ["New", "Running"]
+  },
+  {
+    "id": "jordan-1-retro",
+    "name": "Air Jordan 1 Retro High OG",
+    "brand": "Nike",
+    "description": "The Air Jordan 1 Retro High OG brings a premium twist to Michael Jordan's first signature shoe.",
+    "price": 2499.99,
+    "originalPrice": 2999.99,
+    "rating": 4.9,
+    "reviewCount": 3102,
+    "heroImage": "https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=800&q=80",
+    "colors": [
+      { "name": "Chicago", "hex": "#CE1126", "image": "https://images.unsplash.com/photo-1597045566677-8cf032ed6634?w=600&q=80" },
+      { "name": "Bred", "hex": "#8B0000", "image": "https://images.unsplash.com/photo-1600269452121-4f2416e55c28?w=600&q=80" },
+      { "name": "Royal Blue", "hex": "#1E3A8A", "image": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": true, "stock": 5 },
+      { "size": "US 7", "available": true, "stock": 8 },
+      { "size": "US 8", "available": true, "stock": 12 },
+      { "size": "US 9", "available": true, "stock": 15 },
+      { "size": "US 10", "available": true, "stock": 10 },
+      { "size": "US 11", "available": true, "stock": 7 },
+      { "size": "US 12", "available": true, "stock": 3 }
+    ],
+    "tags": ["Hot", "Basketball", "Limited"]
+  },
+  {
+    "id": "yeezy-350",
+    "name": "Yeezy Boost 350 V2",
+    "brand": "Adidas",
+    "description": "The Yeezy Boost 350 V2 features an upper composed of re-engineered Primeknit with a full-length BOOST sole.",
+    "price": 3299.99,
+    "heroImage": "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=800&q=80",
+    "colors": [
+      { "name": "Zebra", "hex": "#E5E5E5", "image": "https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=600&q=80" },
+      { "name": "Beluga", "hex": "#808080", "image": "https://images.unsplash.com/photo-1600185365926-3a2ce3cdb9eb?w=600&q=80" },
+      { "name": "Lundmark", "hex": "#C2B280", "image": "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": false, "stock": 0 },
+      { "size": "US 7", "available": true, "stock": 6 },
+      { "size": "US 8", "available": true, "stock": 10 },
+      { "size": "US 9", "available": true, "stock": 14 },
+      { "size": "US 10", "available": true, "stock": 12 },
+      { "size": "US 11", "available": true, "stock": 8 },
+      { "size": "US 12", "available": true, "stock": 4 }
+    ],
+    "tags": ["Exclusive", "Lifestyle"]
+  },
+  {
+    "id": "new-balance-550",
+    "name": "New Balance 550",
+    "brand": "New Balance",
+    "description": "First released in 1982, the 550 is back as a modern lifestyle staple with smooth leather upper.",
+    "price": 1499.99,
+    "heroImage": "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&q=80",
+    "colors": [
+      { "name": "White/Green", "hex": "#F0F0F0", "image": "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&q=80" },
+      { "name": "White/Red", "hex": "#F5F5F5", "image": "https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&q=80" },
+      { "name": "Navy", "hex": "#001F5B", "image": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": true, "stock": 10 },
+      { "size": "US 7", "available": true, "stock": 16 },
+      { "size": "US 8", "available": true, "stock": 22 },
+      { "size": "US 9", "available": true, "stock": 26 },
+      { "size": "US 10", "available": true, "stock": 20 },
+      { "size": "US 11", "available": true, "stock": 14 },
+      { "size": "US 12", "available": true, "stock": 8 }
+    ],
+    "tags": ["Trending", "Lifestyle"]
+  },
+  {
+    "id": "puma-suede",
+    "name": "Puma Suede Classic XXI",
+    "brand": "Puma",
+    "description": "A pioneer of basketball sneaker culture, the Puma Suede Classic XXI is a style icon.",
+    "price": 999.99,
+    "heroImage": "https://images.unsplash.com/photo-1556906781-9a412961c28c?w=800&q=80",
+    "colors": [
+      { "name": "Black/White", "hex": "#1A1A1A", "image": "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&q=80" },
+      { "name": "Peacoat", "hex": "#00308F", "image": "https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&q=80" },
+      { "name": "Marmalade", "hex": "#CF6520", "image": "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=600&q=80" }
+    ],
+    "sizes": [
+      { "size": "US 6", "available": true, "stock": 15 },
+      { "size": "US 7", "available": true, "stock": 20 },
+      { "size": "US 8", "available": true, "stock": 28 },
+      { "size": "US 9", "available": true, "stock": 32 },
+      { "size": "US 10", "available": true, "stock": 25 },
+      { "size": "US 11", "available": true, "stock": 18 },
+      { "size": "US 12", "available": true, "stock": 12 }
+    ],
+    "tags": ["Classic", "Streetwear"]
+  }
+]
