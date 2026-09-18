@@ -48,7 +48,7 @@ export default function AdminDashboard() {
               View Store
             </Link>
             <span className="text-gray-300">|</span>
-            <div className="flex items-center gap-2.5"><img src="/logo.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">SneakerVault Admin</h1></div>
+            <div className="flex items-center gap-2.5"><img src="/logo-light.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">SneakerVault Admin</h1></div>
           </div>
           <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-900">
             Log out

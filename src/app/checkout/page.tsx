@@ -146,7 +146,7 @@ function CheckoutContent() {
       <nav className="border-b border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center">
           <Link href="/" className="flex items-center gap-2">
-            <img src="/logo.png" alt="SneakerVault" className="h-10 w-10 rounded-lg object-cover" />
+            <img src="/logo-light.png" alt="SneakerVault" className="h-10 w-10 rounded-lg object-cover" />
             <span className="text-lg font-bold tracking-tight">SneakerVault</span>
           </Link>
         </div>

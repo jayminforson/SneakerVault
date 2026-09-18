@@ -34,7 +34,7 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
     <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
       <!-- Header -->
       <div style="text-align:center;margin-bottom:32px;">
-        <img src="https://sneakervault.com/logo.png" alt="SneakerVault" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin:0 auto 12px;display:block;" />
+        <img src="https://sneakervault.com/logo-light.png" alt="SneakerVault" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin:0 auto 12px;display:block;" />
         <h1 style="font-size:24px;font-weight:700;margin:0;color:#111;">SneakerVault</h1>
         <div style="width:40px;height:2px;background:#111;margin:12px auto;"></div>
       </div>
@@ -105,7 +105,7 @@ function generateOwnerNotificationHTML(order: OrderEmailData): string {
     <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
       <!-- Header -->
       <div style="margin-bottom:24px;display:flex;align-items:center;gap:10px;">
-        <img src="https://sneakervault.com/logo.png" alt="SneakerVault" style="width:36px;height:36px;border-radius:6px;object-fit:cover;" />
+        <img src="https://sneakervault.com/logo-light.png" alt="SneakerVault" style="width:36px;height:36px;border-radius:6px;object-fit:cover;" />
         <h1 style="font-size:20px;font-weight:700;margin:0;color:#111;">New Order — SneakerVault</h1>
       </div>
 

@@ -81,7 +81,7 @@ function EditForm() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">&larr; Back</button>
-          <div className="flex items-center gap-2.5"><img src="/logo.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">{isEditing ? "Edit" : "Add"} Sneaker</h1></div>
+          <div className="flex items-center gap-2.5"><img src="/logo-light.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">{isEditing ? "Edit" : "Add"} Sneaker</h1></div>
         </div>
       </header>
 
