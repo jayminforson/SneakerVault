@@ -68,9 +68,6 @@ export default function AdminLogin() {
           </form>
         </div>
 
-        <p className="text-xs text-gray-400 mt-6 text-center">
-          Default password: sneakervault2026
-        </p>
       </div>
     </div>
   );
