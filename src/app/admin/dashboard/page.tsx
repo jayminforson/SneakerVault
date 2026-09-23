@@ -56,6 +56,16 @@ export default function AdminDashboard() {
         </div>
       </header>
 
+      {/* Tabs */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex gap-6">
+          <span className="py-3 text-sm font-semibold text-gray-900 border-b-2 border-black">Sneakers</span>
+          <Link href="/admin/orders" className="py-3 text-sm text-gray-500 hover:text-gray-900 border-b-2 border-transparent transition-colors">
+            Orders
+          </Link>
+        </div>
+      </div>
+
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">

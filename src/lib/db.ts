@@ -72,3 +72,67 @@ export async function deleteSneaker(id: string): Promise<boolean> {
   await saveSneakers(filtered);
   return true;
 }
+
+// ---------- Orders ----------
+
+const ORDERS_FILE = path.join(process.cwd(), "data", "orders.json");
+
+export interface Order {
+  orderId: string;
+  sneakerId: string;
+  sneakerName: string;
+  brand: string;
+  color: string;
+  size: string;
+  quantity: number;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  notes: string;
+  subtotal: number;
+  deliveryFee: number;
+  tax: number;
+  totalAmount: number;
+  currency: string;
+  status: "PENDING" | "PAID" | "FULFILLED" | "CANCELLED";
+  paymentReference?: string;
+  paymentChannel?: string;
+  createdAt: string;
+  date: string;
+}
+
+export async function getOrders(): Promise<Order[]> {
+  try {
+    const data = await fs.readFile(ORDERS_FILE, "utf-8");
+    return JSON.parse(data);
+  } catch {
+    return [];
+  }
+}
+
+export async function saveOrders(orders: Order[]): Promise<void> {
+  await fs.mkdir(path.dirname(ORDERS_FILE), { recursive: true });
+  await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2));
+}
+
+export async function addOrder(order: Order): Promise<Order> {
+  const orders = await getOrders();
+  orders.push(order);
+  await saveOrders(orders);
+  return order;
+}
+
+export async function getOrderById(orderId: string): Promise<Order | undefined> {
+  const orders = await getOrders();
+  return orders.find((o) => o.orderId === orderId);
+}
+
+export async function updateOrderStatus(orderId: string, status: Order["status"]): Promise<Order | null> {
+  const orders = await getOrders();
+  const idx = orders.findIndex((o) => o.orderId === orderId);
+  if (idx === -1) return null;
+  orders[idx] = { ...orders[idx], status };
+  await saveOrders(orders);
+  return orders[idx];
+}
