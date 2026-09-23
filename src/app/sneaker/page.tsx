@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { convertSize } from "@/lib/size-conversion";
 
 interface Color { name: string; hex: string; image: string; }
 interface Size { size: string; available: boolean; stock: number; }
@@ -12,16 +13,6 @@ interface Sneaker {
   colors: Color[]; sizes: Size[]; tags: string[];
 }
 
-// US to EUR/UK/CM conversion (approximate)
-const sizeMap: Record<string, { eur: string; uk: string; cm: string }> = {
-  "US 6":  { eur: "38.5", uk: "5.5",  cm: "24" },
-  "US 7":  { eur: "40",   uk: "6",    cm: "25" },
-  "US 8":  { eur: "41",   uk: "7",    cm: "26" },
-  "US 9":  { eur: "42.5", uk: "8",    cm: "27" },
-  "US 10": { eur: "44",   uk: "9",    cm: "28" },
-  "US 11": { eur: "45",   uk: "10",   cm: "29" },
-  "US 12": { eur: "46",   uk: "11",   cm: "30" },
-};
 
 function DetailContent() {
   const searchParams = useSearchParams();
@@ -59,10 +50,8 @@ function DetailContent() {
   const stock = selSize !== null ? sneaker.sizes[selSize].stock : 0;
 
   const getDisplaySize = (s: Size) => {
-    if (sizeScale === "US") return s.size.replace("US ", "");
-    const m = sizeMap[s.size];
-    if (!m) return s.size.replace("US ", "");
-    return m[sizeScale.toLowerCase() as keyof typeof m] || s.size.replace("US ", "");
+    const converted = convertSize(s.size, sizeScale);
+    return converted ?? s.size.replace(/^(US|UK|EUR|EU|CM)\s*/i, "");
   };
 
   const handleBuy = () => {

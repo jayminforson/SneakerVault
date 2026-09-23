@@ -2,9 +2,19 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { parseSizeLabel, convertSize } from "@/lib/size-conversion";
 
 interface Color { name: string; hex: string; image: string; }
 interface Size { size: string; available: boolean; stock: number; }
+
+type SizeScale = "US" | "UK" | "EUR" | "CM";
+
+const SCALES: Record<SizeScale, { labels: string[]; placeholder: string }> = {
+  US:  { labels: ["US 6", "US 7", "US 8", "US 9", "US 10", "US 11", "US 12"], placeholder: "9" },
+  UK:  { labels: ["UK 5.5", "UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11"], placeholder: "8" },
+  EUR: { labels: ["EUR 38.5", "EUR 40", "EUR 41", "EUR 42.5", "EUR 44", "EUR 45", "EUR 46.5"], placeholder: "42.5" },
+  CM:  { labels: ["24 CM", "25 CM", "26 CM", "27 CM", "28 CM", "29 CM", "30 CM"], placeholder: "27" },
+};
 
 function EditForm() {
   const searchParams = useSearchParams();
@@ -17,15 +27,10 @@ function EditForm() {
     heroImage: "", tags: "",
   });
   const [colors, setColors] = useState<Color[]>([{ name: "", hex: "#000000", image: "" }]);
-  const [sizes, setSizes] = useState<Size[]>([
-    { size: "US 6", available: true, stock: 10 },
-    { size: "US 7", available: true, stock: 10 },
-    { size: "US 8", available: true, stock: 10 },
-    { size: "US 9", available: true, stock: 10 },
-    { size: "US 10", available: true, stock: 10 },
-    { size: "US 11", available: true, stock: 10 },
-    { size: "US 12", available: true, stock: 10 },
-  ]);
+  const [sizeScale, setSizeScale] = useState<SizeScale>("US");
+  const [sizes, setSizes] = useState<Size[]>(
+    SCALES.US.labels.map((label) => ({ size: label, available: true, stock: 10 }))
+  );
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState<number | null>(null);
 
@@ -38,10 +43,34 @@ function EditForm() {
           heroImage: data.heroImage || "", tags: (data.tags || []).join(", "),
         });
         if (data.colors?.length) setColors(data.colors);
-        if (data.sizes?.length) setSizes(data.sizes);
+        if (data.sizes?.length) {
+          setSizes(data.sizes);
+          const parsed = parseSizeLabel(data.sizes[0]?.size || "");
+          if (parsed) setSizeScale(parsed.scale);
+        }
       });
     }
   }, [editId]);
+
+  const changeScale = (target: SizeScale) => {
+    if (target === sizeScale) return;
+    setSizes((prev) =>
+      prev.map((s) => {
+        const converted = convertSize(s.size, target);
+        if (converted) {
+          return { ...s, size: target === "CM" ? `${converted} CM` : `${target} ${converted}` };
+        }
+        // Not convertible (custom size) — keep as-is
+        return s;
+      })
+    );
+    setSizeScale(target);
+  };
+
+  const sizeMismatch = sizes.some((s) => {
+    const parsed = parseSizeLabel(s.size);
+    return !parsed || parsed.scale !== sizeScale;
+  });
 
   const handleImageUpload = async (file: File, target: "hero" | number) => {
     const fd = new FormData();
@@ -137,11 +166,39 @@ function EditForm() {
 
         {/* Sizes */}
         <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
-          <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Sizes & Stock</h2>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Sizes & Stock</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">Scale</span>
+              <div className="flex gap-0.5 bg-gray-100 rounded-lg p-0.5">
+                {(Object.keys(SCALES) as SizeScale[]).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => changeScale(s)}
+                    className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition-all duration-200 ${sizeScale === s ? "bg-black text-white shadow-sm" : "text-gray-500 hover:text-gray-900"}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          {sizeMismatch && (
+            <div className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+              ⚠ Some sizes don't map cleanly to {sizeScale} — review the values below and edit if needed.
+            </div>
+          )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {sizes.map((s, i) => (
               <div key={i} className="border border-gray-200 rounded-lg p-3 space-y-2">
-                <div className="text-sm font-medium text-gray-900">{s.size}</div>
+                <input
+                  type="text"
+                  className="w-full border border-gray-300 rounded px-2 py-1 text-sm font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-black"
+                  value={s.size}
+                  onChange={(e) => { const n = [...sizes]; n[i].size = e.target.value; setSizes(n); }}
+                  placeholder={SCALES[sizeScale].placeholder}
+                />
                 <input type="number" min="0" className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-black" value={s.stock} onChange={e => { const n = [...sizes]; n[i].stock = Number(e.target.value); setSizes(n); }} />
                 <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
                   <input type="checkbox" checked={s.available} onChange={e => { const n = [...sizes]; n[i].available = e.target.checked; setSizes(n); }} className="rounded" />
