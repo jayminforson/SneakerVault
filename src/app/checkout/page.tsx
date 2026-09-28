@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { computeTotals, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE } from "@/lib/config";
+import { computeTotals, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE, PAYMENT_METHODS, paymentMethodsSentence } from "@/lib/config";
 
 interface Sneaker {
   id: string; name: string; brand: string; price: number; heroImage: string;
@@ -264,11 +264,11 @@ function CheckoutContent() {
                 <div className="space-y-6">
                   <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm">
                     <h2 className="text-sm font-semibold mb-3">Payment</h2>
-                    <p className="text-xs text-gray-500 mb-4">Click below to open the secure Paystack checkout. You can pay with <strong>MTN Mobile Money</strong>, <strong>card</strong>, or <strong>bank transfer</strong>.</p>
+                    <p className="text-xs text-gray-500 mb-4">Click below to open the secure Paystack checkout. You can pay with {paymentMethodsSentence()}.</p>
                     <div className="space-y-2.5 text-xs text-gray-500">
-                      <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> MTN Mobile Money</p>
-                      <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> Visa / Mastercard</p>
-                      <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> Bank Transfer</p>
+                      {PAYMENT_METHODS.map((method) => (
+                        <p key={method.label} className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> {method.label}</p>
+                      ))}
                       <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> Email receipt</p>
                     </div>
                   </div>

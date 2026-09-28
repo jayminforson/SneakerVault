@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { CURRENCY_SYMBOL } from "@/lib/config";
+import { CURRENCY_SYMBOL, paymentMethodsSentence } from "@/lib/config";
 
 interface Sneaker {
   id: string; name: string; brand: string; price: number;
@@ -78,7 +78,7 @@ export default function Home() {
       {/* Hero */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-6 sm:pb-8 animate-fade-in">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Find your pair.</h1>
-        <p className="text-gray-500 mt-2 sm:mt-3 text-sm sm:text-base">Pay securely with card, bank transfer, or Mobile Money. Receipt by email.</p>
+        <p className="text-gray-500 mt-2 sm:mt-3 text-sm sm:text-base">Pay securely with {paymentMethodsSentence()}. Receipt by email.</p>
       </div>
 
       {/* Filters */}

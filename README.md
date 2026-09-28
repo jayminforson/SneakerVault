@@ -17,8 +17,8 @@ A sneaker storefront with an admin panel, built on Next.js (App Router), React 1
 ## Setup
 
 ```bash
-git clone git@github.com:jayminforson/sneakervault.git
-cd sneakervault
+git clone git@github.com:jayminforson/SneakerVault.git
+cd SneakerVault
 npm install
 cp .env.example .env.local
 ```
@@ -53,8 +53,8 @@ All are documented inline in [`.env.example`](.env.example).
 | `RESEND_API_KEY` | yes | Sends receipt and owner emails |
 | `FROM_EMAIL` | no | Sender address (must be verified in Resend) |
 | `OWNER_EMAIL` | yes | Destination for new-order alerts |
-| `DATABASE_URL` | yes | Neon Postgres connection string |
-| `BLOB_READ_WRITE_TOKEN` | yes | Vercel Blob storage for uploaded images |
+| `DATABASE_URL` | yes | Neon Postgres connection string (**non-pooled** / direct) |
+| `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` | yes | Vercel Blob storage for uploaded images — a read-write token, or OIDC credentials when the store is connected to the project |
 
 ## Project layout
 
@@ -82,6 +82,6 @@ The app targets Vercel. Because the filesystem is read-only there, all product a
 
 1. Push to `main`, or import the repo in Vercel.
 2. Add every variable from `.env.example` to the project's Environment Variables.
-3. Create a Neon database (Vercel → Storage → Create → Neon) and set `DATABASE_URL`.
-4. Create a Blob store (Vercel → Storage → Create → Blob) and set `BLOB_READ_WRITE_TOKEN`.
+3. Create a database: either Vercel → Storage → Create → Neon, or a project at [neon.tech](https://neon.tech). Set `DATABASE_URL` to the **non-pooled** (direct) connection string — the app talks HTTP and never holds a session open, so pgBouncer only adds latency.
+4. Create a Blob store (Vercel → Storage → Create → Blob) and connect it to the project. Vercel injects the credentials; the store's ID and read-write token are picked up automatically.
 5. Seed the catalogue: `npm run db:seed`.
