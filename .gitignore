@@ -24,10 +24,6 @@
 .DS_Store
 *.pem
 
-# runtime data (seed data in data/sneakers.json stays tracked)
-/data/orders.json
-/public/uploads/
-
 # debug
 npm-debug.log*
 yarn-debug.log*

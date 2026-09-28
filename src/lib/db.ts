@@ -1,7 +1,9 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import * as q from "@/lib/queries";
 
-const DATA_FILE = path.join(process.cwd(), "data", "sneakers.json");
+// Data layer. The public API is unchanged from the original JSON-file
+// implementation so callers in src/app and src/lib do not need to know which
+// storage backend is in use. All SQL lives in ./queries.
 
 export interface SneakerSize {
   size: string;
@@ -30,53 +32,6 @@ export interface Sneaker {
   tags: string[];
 }
 
-export async function getSneakers(): Promise<Sneaker[]> {
-  try {
-    const data = await fs.readFile(DATA_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-}
-
-export async function getSneakerById(id: string): Promise<Sneaker | undefined> {
-  const sneakers = await getSneakers();
-  return sneakers.find((s) => s.id === id);
-}
-
-export async function saveSneakers(sneakers: Sneaker[]): Promise<void> {
-  await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(sneakers, null, 2));
-}
-
-export async function addSneaker(sneaker: Sneaker): Promise<Sneaker> {
-  const sneakers = await getSneakers();
-  sneakers.push(sneaker);
-  await saveSneakers(sneakers);
-  return sneaker;
-}
-
-export async function updateSneaker(id: string, updates: Partial<Sneaker>): Promise<Sneaker | null> {
-  const sneakers = await getSneakers();
-  const idx = sneakers.findIndex((s) => s.id === id);
-  if (idx === -1) return null;
-  sneakers[idx] = { ...sneakers[idx], ...updates, id };
-  await saveSneakers(sneakers);
-  return sneakers[idx];
-}
-
-export async function deleteSneaker(id: string): Promise<boolean> {
-  const sneakers = await getSneakers();
-  const filtered = sneakers.filter((s) => s.id !== id);
-  if (filtered.length === sneakers.length) return false;
-  await saveSneakers(filtered);
-  return true;
-}
-
-// ---------- Orders ----------
-
-const ORDERS_FILE = path.join(process.cwd(), "data", "orders.json");
-
 export interface Order {
   orderId: string;
   sneakerId: string;
@@ -102,39 +57,219 @@ export interface Order {
   date: string;
 }
 
-export async function getOrders(): Promise<Order[]> {
-  try {
-    const data = await fs.readFile(ORDERS_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch {
-    return [];
+// Created lazily so that `next build` (and any environment without a database)
+// can import route modules without throwing at module scope.
+let client: NeonQueryFunction<false, false> | null = null;
+
+function getSql(): NeonQueryFunction<false, false> {
+  const url =
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL;
+  if (!url) {
+    throw new Error(
+      "DATABASE_URL is not set. Copy .env.example to .env.local and add your Neon connection string."
+    );
+  }
+  if (!client) client = neon(url);
+  return client;
+}
+
+async function run(query: q.Query): Promise<Record<string, unknown>[]> {
+  const rows = await getSql().query(query.text, query.params as unknown[]);
+  return rows as Record<string, unknown>[];
+}
+
+interface SneakerRow {
+  id: string;
+  name: string;
+  brand: string;
+  description: string;
+  price: number | string;
+  original_price: number | string | null;
+  rating: number | string;
+  review_count: number;
+  hero_image: string;
+  colors: SneakerColor[] | null;
+  tags: string[] | null;
+  sizes: SneakerSize[] | null;
+}
+
+interface OrderRow {
+  order_id: string;
+  sneaker_id: string;
+  sneaker_name: string;
+  brand: string;
+  color: string;
+  size: string;
+  quantity: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string;
+  delivery_address: string;
+  notes: string;
+  subtotal: number | string;
+  delivery_fee: number | string;
+  tax: number | string;
+  total_amount: number | string;
+  currency: string;
+  status: string;
+  payment_reference: string | null;
+  payment_channel: string | null;
+  created_at: string | Date;
+  date: string;
+}
+
+function toSneaker(row: SneakerRow): Sneaker {
+  return {
+    id: row.id,
+    name: row.name,
+    brand: row.brand,
+    description: row.description,
+    price: Number(row.price),
+    originalPrice: row.original_price == null ? undefined : Number(row.original_price),
+    rating: Number(row.rating),
+    reviewCount: Number(row.review_count),
+    heroImage: row.hero_image,
+    colors: row.colors ?? [],
+    sizes: row.sizes ?? [],
+    tags: row.tags ?? [],
+  };
+}
+
+function toOrder(row: OrderRow): Order {
+  return {
+    orderId: row.order_id,
+    sneakerId: row.sneaker_id,
+    sneakerName: row.sneaker_name,
+    brand: row.brand,
+    color: row.color,
+    size: row.size,
+    quantity: Number(row.quantity),
+    customerName: row.customer_name,
+    customerEmail: row.customer_email,
+    customerPhone: row.customer_phone,
+    deliveryAddress: row.delivery_address,
+    notes: row.notes,
+    subtotal: Number(row.subtotal),
+    deliveryFee: Number(row.delivery_fee),
+    tax: Number(row.tax),
+    totalAmount: Number(row.total_amount),
+    currency: row.currency,
+    status: row.status as Order["status"],
+    paymentReference: row.payment_reference ?? undefined,
+    paymentChannel: row.payment_channel ?? undefined,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
+    date: row.date,
+  };
+}
+
+// Drops keys whose value is undefined so a partial update never blanks a column.
+function definedOnly<T extends object>(input: T): Partial<T> {
+  const out: Partial<T> = {};
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== undefined) (out as Record<string, unknown>)[key] = value;
+  }
+  return out;
+}
+
+// ---------- Sneakers ----------
+
+export async function getSneakers(): Promise<Sneaker[]> {
+  const rows = (await run(q.selectSneakers)) as unknown as SneakerRow[];
+  return rows.map(toSneaker);
+}
+
+export async function getSneakerById(id: string): Promise<Sneaker | undefined> {
+  const rows = (await run(q.selectSneakerById(id))) as unknown as SneakerRow[];
+  return rows[0] ? toSneaker(rows[0]) : undefined;
+}
+
+async function replaceSizes(sneakerId: string, sizes: SneakerSize[]): Promise<void> {
+  await run(q.deleteSizes(sneakerId));
+  for (let i = 0; i < sizes.length; i++) {
+    const entry = sizes[i];
+    if (!entry?.size) continue;
+    await run(
+      q.insertSize(
+        sneakerId,
+        entry.size,
+        entry.available !== false,
+        Math.max(0, Math.trunc(Number(entry.stock) || 0)),
+        i
+      )
+    );
   }
 }
 
-export async function saveOrders(orders: Order[]): Promise<void> {
-  await fs.mkdir(path.dirname(ORDERS_FILE), { recursive: true });
-  await fs.writeFile(ORDERS_FILE, JSON.stringify(orders, null, 2));
+function sneakerPayload(sneaker: Sneaker) {
+  return {
+    id: sneaker.id,
+    name: sneaker.name,
+    brand: sneaker.brand,
+    description: sneaker.description,
+    price: sneaker.price,
+    originalPrice: sneaker.originalPrice,
+    rating: sneaker.rating,
+    reviewCount: sneaker.reviewCount,
+    heroImage: sneaker.heroImage,
+    colors: JSON.stringify(sneaker.colors ?? []),
+    tags: JSON.stringify(sneaker.tags ?? []),
+  };
+}
+
+export async function addSneaker(sneaker: Sneaker): Promise<Sneaker> {
+  await run(q.insertSneaker(sneakerPayload(sneaker)));
+  await replaceSizes(sneaker.id, sneaker.sizes ?? []);
+  return sneaker;
+}
+
+export async function updateSneaker(id: string, updates: Partial<Sneaker>): Promise<Sneaker | null> {
+  const existing = await getSneakerById(id);
+  if (!existing) return null;
+
+  const patch = definedOnly(updates);
+  const merged: Sneaker = { ...existing, ...patch, id };
+
+  await run(q.updateSneaker(sneakerPayload(merged)));
+  if (patch.sizes) await replaceSizes(id, merged.sizes);
+
+  return (await getSneakerById(id)) ?? null;
+}
+
+export async function deleteSneaker(id: string): Promise<boolean> {
+  const existing = await getSneakerById(id);
+  if (!existing) return false;
+  await run(q.deleteSneaker(id));
+  return true;
+}
+
+// ---------- Orders ----------
+
+export async function getOrders(): Promise<Order[]> {
+  const rows = (await run(q.selectOrders)) as unknown as OrderRow[];
+  return rows.map(toOrder);
 }
 
 export async function addOrder(order: Order): Promise<Order> {
-  const orders = await getOrders();
-  orders.push(order);
-  await saveOrders(orders);
+  await run(q.insertOrder(order));
   return order;
 }
 
 export async function getOrderById(orderId: string): Promise<Order | undefined> {
-  const orders = await getOrders();
-  return orders.find((o) => o.orderId === orderId);
+  const rows = (await run(q.selectOrderById(orderId))) as unknown as OrderRow[];
+  return rows[0] ? toOrder(rows[0]) : undefined;
 }
 
 export async function updateOrder(orderId: string, updates: Partial<Order>): Promise<Order | null> {
-  const orders = await getOrders();
-  const idx = orders.findIndex((o) => o.orderId === orderId);
-  if (idx === -1) return null;
-  orders[idx] = { ...orders[idx], ...updates, orderId };
-  await saveOrders(orders);
-  return orders[idx];
+  const existing = await getOrderById(orderId);
+  if (!existing) return null;
+
+  const patch = definedOnly(updates);
+  const merged: Order = { ...existing, ...patch, orderId };
+
+  await run(q.updateOrder(merged));
+  return (await getOrderById(orderId)) ?? null;
 }
 
 export async function updateOrderStatus(orderId: string, status: Order["status"]): Promise<Order | null> {
@@ -144,24 +279,12 @@ export async function updateOrderStatus(orderId: string, status: Order["status"]
 // Resolves a Paystack reference back to its order. Also matches references of
 // the form SV-<orderId>-<timestamp> so a superseded reference still resolves.
 export async function getOrderByPaymentReference(reference: string): Promise<Order | undefined> {
-  const orders = await getOrders();
-  return (
-    orders.find((o) => o.paymentReference === reference) ??
-    orders.find((o) => o.orderId && reference.startsWith(`SV-${o.orderId}-`))
-  );
+  const rows = (await run(q.selectOrderByPaymentReference(reference))) as unknown as OrderRow[];
+  return rows[0] ? toOrder(rows[0]) : undefined;
 }
 
 // ---------- Stock ----------
 
 export async function decrementStock(sneakerId: string, size: string, quantity: number): Promise<void> {
-  const sneakers = await getSneakers();
-  const idx = sneakers.findIndex((s) => s.id === sneakerId);
-  if (idx === -1) return;
-  const sizes = sneakers[idx].sizes;
-  const sizeIdx = sizes.findIndex((s) => s.size === size);
-  if (sizeIdx === -1) return;
-  const stock = Math.max(0, sizes[sizeIdx].stock - quantity);
-  sizes[sizeIdx] = { ...sizes[sizeIdx], stock, available: stock > 0 };
-  await saveSneakers(sneakers);
+  await run(q.decrementStock(sneakerId, size, Math.trunc(quantity)));
 }
-

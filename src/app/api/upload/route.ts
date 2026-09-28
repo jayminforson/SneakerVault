@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { randomBytes } from "crypto";
+import { put } from "@vercel/blob";
 import { requireAdmin } from "@/lib/auth";
 import { validateImage } from "@/lib/images";
+
+export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   const denied = requireAdmin(request);
   if (denied) return denied;
+
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      { error: "Image uploads are not configured (BLOB_READ_WRITE_TOKEN is missing)" },
+      { status: 503 }
+    );
+  }
 
   const formData = await request.formData().catch(() => null);
   if (!formData) return NextResponse.json({ error: "Expected multipart form data" }, { status: 400 });
@@ -18,11 +26,21 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: image.error }, { status: 415 });
   }
 
-  const filename = `${Date.now()}-${randomBytes(4).toString("hex")}.${image.ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-  await fs.mkdir(uploadDir, { recursive: true });
+  // Name is generated, never derived from user input; the extension comes from
+  // the validated MIME type. `allowOverwrite: false` makes collisions a hard
+  // error rather than silently replacing someone else's image.
+  const pathname = `uploads/${Date.now()}-${randomBytes(4).toString("hex")}.${image.ext}`;
   const bytes = Buffer.from(await (file as File).arrayBuffer());
-  await fs.writeFile(path.join(uploadDir, filename), bytes, { flag: "wx" });
 
-  return NextResponse.json({ url: `/uploads/${filename}` });
+  try {
+    const blob = await put(pathname, bytes, {
+      access: "public",
+      contentType: image.type,
+      allowOverwrite: false,
+    });
+    return NextResponse.json({ url: blob.url });
+  } catch (error) {
+    console.error("Blob upload failed:", error);
+    return NextResponse.json({ error: "Could not store the image" }, { status: 500 });
+  }
 }
