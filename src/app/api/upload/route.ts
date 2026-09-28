@@ -10,9 +10,18 @@ export async function POST(request: NextRequest) {
   const denied = requireAdmin(request);
   if (denied) return denied;
 
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  // The SDK resolves credentials in this order: OIDC (BLOB_STORE_ID + the
+  // platform's short-lived token), then BLOB_READ_WRITE_TOKEN. Checking only
+  // the token would reject a store that is connected but was never issued a
+  // static token.
+  const hasBlobCredentials =
+    Boolean(process.env.BLOB_STORE_ID) || Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  if (!hasBlobCredentials) {
     return NextResponse.json(
-      { error: "Image uploads are not configured (BLOB_READ_WRITE_TOKEN is missing)" },
+      {
+        error:
+          "Image uploads are not configured. Create a Vercel Blob store and connect it to this project (Storage tab).",
+      },
       { status: 503 }
     );
   }
