@@ -6,6 +6,7 @@ import Link from "next/link";
 interface Sneaker {
   id: string; name: string; brand: string; price: number;
   originalPrice?: number; heroImage: string; tags: string[];
+  rating: number; reviewCount: number;
   colors: { name: string; hex: string }[];
 }
 
@@ -37,7 +38,9 @@ export default function Home() {
     .sort((a, b) => {
       if (sort === "price-low") return a.price - b.price;
       if (sort === "price-high") return b.price - a.price;
-      return 0;
+      // "Popular": most-reviewed first, better-rated first on a tie.
+      if (b.reviewCount !== a.reviewCount) return b.reviewCount - a.reviewCount;
+      return b.rating - a.rating;
     });
 
   return (
@@ -59,7 +62,7 @@ export default function Home() {
       {/* Hero */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-6 sm:pb-8 animate-fade-in">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight">Find your pair.</h1>
-        <p className="text-gray-500 mt-2 sm:mt-3 text-sm sm:text-base">Pay with MTN Mobile Money. Get your receipt by email.</p>
+        <p className="text-gray-500 mt-2 sm:mt-3 text-sm sm:text-base">Pay securely with card, bank transfer, or Mobile Money. Receipt by email.</p>
       </div>
 
       {/* Filters */}
@@ -125,6 +128,11 @@ export default function Home() {
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-sm font-bold">GH₵ {s.price.toFixed(2)}</span>
                   {s.originalPrice && <span className="text-xs text-gray-400 line-through">GH₵ {s.originalPrice.toFixed(2)}</span>}
+                </div>
+                <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-500">
+                  <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" /></svg>
+                  <span className="font-medium text-gray-700">{s.rating.toFixed(1)}</span>
+                  <span>· {s.reviewCount} review{s.reviewCount === 1 ? "" : "s"}</span>
                 </div>
                 <div className="flex gap-1.5 mt-2">
                   {s.colors?.slice(0, 4).map((c, i) => (

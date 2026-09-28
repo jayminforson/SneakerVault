@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "SneakerVault",
-  description: "Shop premium sneakers. Pay with MTN Mobile Money.",
+  description: "Shop premium sneakers. Pay securely with Paystack.",
   icons: {
     icon: "./icon.png",
   },
