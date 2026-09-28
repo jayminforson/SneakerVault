@@ -50,7 +50,7 @@ const SCHEMA_STATEMENTS = readFileSync(path.join(root, "scripts", "schema.sql"),
 
 console.log("→ Creating schema…");
 for (const statement of SCHEMA_STATEMENTS) {
-  await sql.query(statement);
+  await sql.query(statement, []);
 }
 console.log("✓ Schema ready");
 
