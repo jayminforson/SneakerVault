@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Order {
   orderId: string;
@@ -40,11 +40,10 @@ export default function AdminOrders() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
-  const router = useRouter();
+  const { authenticated, logout } = useAdminAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("sv-admin");
-    if (!token) { router.push("/admin"); return; }
+    if (authenticated !== true) return;
     let cancelled = false;
     fetch("/api/orders")
       .then((res) => {
@@ -55,7 +54,7 @@ export default function AdminOrders() {
       .catch(() => { if (!cancelled) setOrders([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [router]);
+  }, [authenticated]);
 
   const updateStatus = async (orderId: string, status: Order["status"]) => {
     setUpdating(orderId);
@@ -63,9 +62,11 @@ export default function AdminOrders() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ orderId, status }),
-    });
-    if (res.ok) {
+    }).catch(() => null);
+    if (res?.ok) {
       setOrders((prev) => prev.map((o) => (o.orderId === orderId ? { ...o, status } : o)));
+    } else {
+      alert("Could not update the order. You may need to sign in again.");
     }
     setUpdating(null);
   };
@@ -94,11 +95,6 @@ export default function AdminOrders() {
       revenue,
     };
   }, [orders]);
-
-  const logout = () => {
-    localStorage.removeItem("sv-admin");
-    router.push("/admin");
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">

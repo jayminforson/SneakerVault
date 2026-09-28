@@ -5,6 +5,7 @@ import {
   type Order,
 } from "@/lib/db";
 import { computeTotals, isValidQuantity, MAX_QUANTITY } from "@/lib/config";
+import { requireAdmin } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
@@ -100,17 +101,36 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const orderId = searchParams.get("orderId");
+
+  // Single-order lookup stays public so checkout can re-confirm a payment,
+  // but it deliberately exposes no customer PII.
   if (orderId) {
     const order = await getOrderById(orderId);
     if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    return NextResponse.json({ success: true, order });
+    return NextResponse.json({
+      success: true,
+      order: {
+        orderId: order.orderId,
+        status: order.status,
+        paymentReference: order.paymentReference,
+        paymentChannel: order.paymentChannel,
+        totalAmount: order.totalAmount,
+        currency: order.currency,
+      },
+    });
   }
+
+  const denied = requireAdmin(request);
+  if (denied) return denied;
+
   const allOrders = await getOrders();
   allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   return NextResponse.json({ success: true, count: allOrders.length, orders: allOrders });
 }
 
 export async function PATCH(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
   try {
     const { orderId, status } = await request.json();
     const valid: Order["status"][] = ["PENDING", "PAID", "FULFILLED", "CANCELLED"];

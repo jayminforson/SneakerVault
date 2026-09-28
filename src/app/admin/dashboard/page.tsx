@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Sneaker {
   id: string; name: string; brand: string; price: number;
@@ -13,28 +14,30 @@ export default function AdminDashboard() {
   const [sneakers, setSneakers] = useState<Sneaker[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { authenticated, logout } = useAdminAuth();
 
   useEffect(() => {
-    const token = localStorage.getItem("sv-admin");
-    if (!token) { router.push("/admin"); return; }
+    if (authenticated !== true) return;
     let cancelled = false;
     fetch("/api/sneakers")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+        return res.json();
+      })
       .then((data) => { if (!cancelled) setSneakers(Array.isArray(data) ? data : []); })
       .catch(() => { if (!cancelled) setSneakers([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [router]);
+  }, [authenticated]);
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    await fetch(`/api/sneakers?id=${id}`, { method: "DELETE" });
-    setSneakers(sneakers.filter((s) => s.id !== id));
-  };
-
-  const logout = () => {
-    localStorage.removeItem("sv-admin");
-    router.push("/admin");
+    const res = await fetch(`/api/sneakers?id=${id}`, { method: "DELETE" }).catch(() => null);
+    if (res?.ok) {
+      setSneakers((prev) => prev.filter((s) => s.id !== id));
+    } else {
+      alert(res ? "Could not delete this sneaker. You may need to sign in again." : "Network error.");
+    }
   };
 
   return (

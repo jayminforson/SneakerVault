@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSneakers, getSneakerById, addSneaker, updateSneaker, deleteSneaker } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET(request: NextRequest) {
@@ -14,6 +15,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
   const body = await request.json();
   const sneaker = {
     id: body.id || uuidv4(),
@@ -28,6 +31,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
   const body = await request.json();
   if (!body.id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   const updated = await updateSneaker(body.id, body);
@@ -36,6 +41,8 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const denied = requireAdmin(request);
+  if (denied) return denied;
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseSizeLabel, convertSize } from "@/lib/size-conversion";
+import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Color { name: string; hex: string; image: string; }
 interface Size { size: string; available: boolean; stock: number; }
@@ -20,6 +21,7 @@ function EditForm() {
   const searchParams = useSearchParams();
   const editId = searchParams.get("id");
   const router = useRouter();
+  const { authenticated } = useAdminAuth();
   const isEditing = !!editId;
 
   const [form, setForm] = useState({
@@ -32,25 +34,28 @@ function EditForm() {
     SCALES.US.labels.map((label) => ({ size: label, available: true, stock: 10 }))
   );
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState<number | null>(null);
+  const [uploading, setUploading] = useState<number | "hero" | null>(null);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
-    if (editId) {
-      fetch(`/api/sneakers?id=${editId}`).then(r => r.json()).then(data => {
-        setForm({
-          name: data.name || "", brand: data.brand || "", description: data.description || "",
-          price: String(data.price || ""), originalPrice: data.originalPrice ? String(data.originalPrice) : "",
-          heroImage: data.heroImage || "", tags: (data.tags || []).join(", "),
-        });
-        if (data.colors?.length) setColors(data.colors);
-        if (data.sizes?.length) {
-          setSizes(data.sizes);
-          const parsed = parseSizeLabel(data.sizes[0]?.size || "");
-          if (parsed) setSizeScale(parsed.scale);
-        }
+    if (authenticated !== true || !editId) return;
+    let cancelled = false;
+    fetch(`/api/sneakers?id=${editId}`).then(r => r.json()).then(data => {
+      if (cancelled || data?.error) return;
+      setForm({
+        name: data.name || "", brand: data.brand || "", description: data.description || "",
+        price: String(data.price ?? ""), originalPrice: data.originalPrice ? String(data.originalPrice) : "",
+        heroImage: data.heroImage || "", tags: (data.tags || []).join(", "),
       });
-    }
-  }, [editId]);
+      if (data.colors?.length) setColors(data.colors);
+      if (data.sizes?.length) {
+        setSizes(data.sizes);
+        const parsed = parseSizeLabel(data.sizes[0]?.size || "");
+        if (parsed) setSizeScale(parsed.scale);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [editId, authenticated]);
 
   const changeScale = (target: SizeScale) => {
     if (target === sizeScale) return;
@@ -73,34 +78,67 @@ function EditForm() {
   });
 
   const handleImageUpload = async (file: File, target: "hero" | number) => {
-    const fd = new FormData();
-    fd.append("file", file);
-    if (typeof target === "number") setUploading(target);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    const data = await res.json();
-    if (target === "hero") setForm(f => ({ ...f, heroImage: data.url }));
-    else {
-      const next = [...colors];
-      next[target] = { ...next[target], image: data.url };
-      setColors(next);
+    setFormError("");
+    setUploading(target);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      if (target === "hero") {
+        setForm(f => ({ ...f, heroImage: data.url }));
+      } else {
+        setColors(prev => prev.map((c, i) => (i === target ? { ...c, image: data.url } : c)));
+      }
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setUploading(null);
     }
-    setUploading(null);
   };
 
   const handleSave = async () => {
+    setFormError("");
+
+    const price = Number(form.price);
+    if (!Number.isFinite(price) || price <= 0) {
+      setFormError("Enter a valid price greater than zero.");
+      return;
+    }
+    const originalPrice = form.originalPrice ? Number(form.originalPrice) : undefined;
+    if (originalPrice !== undefined && (!Number.isFinite(originalPrice) || originalPrice < 0)) {
+      setFormError("Enter a valid original price, or leave it blank.");
+      return;
+    }
+
     setSaving(true);
-    const body = {
-      id: editId || undefined,
-      name: form.name, brand: form.brand, description: form.description,
-      price: Number(form.price), originalPrice: form.originalPrice ? Number(form.originalPrice) : undefined,
-      heroImage: form.heroImage,
-      colors, sizes,
-      tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
-      rating: 4.5, reviewCount: 0,
-    };
-    const method = isEditing ? "PUT" : "POST";
-    await fetch("/api/sneakers", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    router.push("/admin/dashboard");
+    try {
+      const body = {
+        id: editId || undefined,
+        name: form.name.trim(), brand: form.brand.trim(), description: form.description.trim(),
+        price, originalPrice,
+        heroImage: form.heroImage,
+        colors, sizes,
+        tags: form.tags.split(",").map(t => t.trim()).filter(Boolean),
+      };
+      const method = isEditing ? "PUT" : "POST";
+      const res = await fetch("/api/sneakers", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        router.replace("/admin");
+        return;
+      }
+      if (!res.ok) throw new Error(data.error || "Could not save the sneaker");
+      router.push("/admin/dashboard");
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Could not save the sneaker");
+      setSaving(false);
+    }
   };
 
   const inputCls = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent";
@@ -136,7 +174,9 @@ function EditForm() {
           <div className="flex items-start gap-4">
             {form.heroImage && <img src={form.heroImage} alt="Hero" className="w-24 h-24 rounded-lg object-cover bg-gray-100" />}
             <label className="cursor-pointer">
-              <span className="text-sm text-gray-600 hover:text-black underline">{form.heroImage ? "Change image" : "Upload image"}</span>
+              <span className="text-sm text-gray-600 hover:text-black underline">
+                {uploading === "hero" ? "Uploading..." : form.heroImage ? "Change image" : "Upload image"}
+              </span>
               <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], "hero")} />
             </label>
           </div>
@@ -210,8 +250,11 @@ function EditForm() {
         </section>
 
         {/* Save */}
+        {formError && (
+          <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{formError}</p>
+        )}
         <div className="flex gap-3">
-          <button onClick={handleSave} disabled={saving || !form.name || !form.brand || !form.price} className="bg-black text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-colors">
+          <button onClick={handleSave} disabled={saving || authenticated !== true || !form.name || !form.brand || !form.price} className="bg-black text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-40 transition-colors">
             {saving ? "Saving..." : isEditing ? "Save Changes" : "Add Sneaker"}
           </button>
           <button onClick={() => router.back()} className="px-6 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 border border-gray-300 hover:border-gray-400 transition-colors">

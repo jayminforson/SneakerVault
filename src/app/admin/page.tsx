@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function AdminLogin() {
@@ -8,6 +8,20 @@ export default function AdminLogin() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // Already signed in? Skip the login screen.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/auth")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data?.authenticated === true) router.replace("/admin/dashboard");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,15 +34,14 @@ export default function AdminLogin() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
-        localStorage.setItem("sv-admin", data.token);
         router.push("/admin/dashboard");
       } else {
-        setError("Wrong password. Try again.");
+        setError(data.error || "Wrong password. Try again.");
       }
     } catch {
-      setError("Something went wrong.");
+      setError("Something went wrong. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
