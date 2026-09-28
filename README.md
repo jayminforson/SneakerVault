@@ -23,7 +23,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Fill in `.env.local` — see [Environment variables](#environment-variables).
+Fill in `.env.local` — see [Environment variables](#environment-variables). For image uploads, connect a Vercel Blob store with the **Development** environment enabled and run `vercel env pull` once to fetch its credentials.
 
 ```bash
 npm run db:seed   # create the schema and load the catalogue
@@ -54,7 +54,7 @@ All are documented inline in [`.env.example`](.env.example).
 | `FROM_EMAIL` | no | Sender address (must be verified in Resend) |
 | `OWNER_EMAIL` | yes | Destination for new-order alerts |
 | `DATABASE_URL` | yes | Neon Postgres connection string (**non-pooled** / direct) |
-| `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` | yes | Vercel Blob storage for uploaded images — a read-write token, or OIDC credentials when the store is connected to the project |
+| `BLOB_READ_WRITE_TOKEN` or `BLOB_STORE_ID` | yes | Vercel Blob storage for uploaded images — prefer OIDC via `BLOB_STORE_ID`; a static read-write token is the fallback |
 
 ## Project layout
 
@@ -83,5 +83,5 @@ The app targets Vercel. Because the filesystem is read-only there, all product a
 1. Push to `main`, or import the repo in Vercel.
 2. Add every variable from `.env.example` to the project's Environment Variables.
 3. Create a database: either Vercel → Storage → Create → Neon, or a project at [neon.tech](https://neon.tech). Set `DATABASE_URL` to the **non-pooled** (direct) connection string — the app talks HTTP and never holds a session open, so pgBouncer only adds latency.
-4. Create a Blob store (Vercel → Storage → Create → Blob) and connect it to the project. Vercel injects the credentials; the store's ID and read-write token are picked up automatically.
+4. Create a Blob store (Vercel → Storage → Create → Blob) and connect it to the project. Vercel injects the store credentials. Tick **Development** as well if you want uploads to work under `npm run dev`, then run `vercel env pull` once to fetch them.
 5. Seed the catalogue: `npm run db:seed`.
