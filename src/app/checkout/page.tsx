@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface Sneaker { id: string; name: string; brand: string; price: number; heroImage: string; colors: { name: string; image: string }[]; }
@@ -9,7 +9,6 @@ type Step = "info" | "pay" | "loading" | "done" | "error";
 
 function CheckoutContent() {
   const sp = useSearchParams();
-  const router = useRouter();
   const [sneaker, setSneaker] = useState<Sneaker | null>(null);
   const [step, setStep] = useState<Step>("info");
   const [err, setErr] = useState("");

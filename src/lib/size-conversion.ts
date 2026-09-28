@@ -33,7 +33,7 @@ for (const row of TABLE) {
 // Normalize a size label like "US 9", "EUR 42.5", "UK 8", "27 CM", "9", "42.5"
 export function parseSizeLabel(label: string): { scale: "US" | "UK" | "EUR" | "CM"; value: string } | null {
   const s = label.trim();
-  let m = s.match(/^(US|UK|EUR|EU|CM)\s*(.+)$/i);
+  const m = s.match(/^(US|UK|EUR|EU|CM)\s*(.+)$/i);
   if (m) {
     let scale = m[1].toUpperCase();
     if (scale === "EU") scale = "EUR";

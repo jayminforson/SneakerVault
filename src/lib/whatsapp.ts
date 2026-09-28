@@ -14,7 +14,7 @@ export interface OrderData {
   subtotal: number; deliveryFee: number; tax: number;
 }
 
-export interface ReceiptData extends OrderData {}
+export type ReceiptData = OrderData;
 
 function formatPhoneForWA(phone: string): string {
   let cleaned = phone.replace(/\D/g, "");

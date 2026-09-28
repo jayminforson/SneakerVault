@@ -186,7 +186,7 @@ function EditForm() {
           </div>
           {sizeMismatch && (
             <div className="text-xs text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-              ⚠ Some sizes don't map cleanly to {sizeScale} — review the values below and edit if needed.
+              ⚠ Some sizes don&apos;t map cleanly to {sizeScale} — review the values below and edit if needed.
             </div>
           )}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

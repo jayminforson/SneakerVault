@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
-      orderId, customerName, customerEmail, customerPhone,
+      orderId, customerName, customerEmail,
       sneakerName, brand, size, color, quantity,
       subtotal, deliveryFee, tax, totalAmount,
       paymentMethod, paymentStatus, deliveryAddress, heroImage,

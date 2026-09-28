@@ -1,6 +1,14 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+
+function getResend(): Resend | null {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return null;
+  if (!resendClient) resendClient = new Resend(apiKey);
+  return resendClient;
+}
+
 const FROM_EMAIL = process.env.FROM_EMAIL || "SneakerVault <receipts@sneakervault.com>";
 const OWNER_EMAIL = process.env.OWNER_EMAIL || "";
 
@@ -159,6 +167,12 @@ export async function sendCustomerReceipt(order: OrderEmailData): Promise<boolea
     return false;
   }
 
+  const resend = getResend();
+  if (!resend) {
+    console.error("RESEND_API_KEY not configured, skipping receipt");
+    return false;
+  }
+
   try {
     await resend.emails.send({
       from: FROM_EMAIL,
@@ -177,6 +191,12 @@ export async function sendCustomerReceipt(order: OrderEmailData): Promise<boolea
 export async function sendOwnerNotification(order: OrderEmailData): Promise<boolean> {
   if (!OWNER_EMAIL) {
     console.error("OWNER_EMAIL not configured, skipping notification");
+    return false;
+  }
+
+  const resend = getResend();
+  if (!resend) {
+    console.error("RESEND_API_KEY not configured, skipping owner notification");
     return false;
   }
 

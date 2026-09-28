@@ -17,15 +17,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     const token = localStorage.getItem("sv-admin");
     if (!token) { router.push("/admin"); return; }
-    fetchSneakers();
+    let cancelled = false;
+    fetch("/api/sneakers")
+      .then((res) => res.json())
+      .then((data) => { if (!cancelled) setSneakers(Array.isArray(data) ? data : []); })
+      .catch(() => { if (!cancelled) setSneakers([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [router]);
-
-  const fetchSneakers = async () => {
-    const res = await fetch("/api/sneakers");
-    const data = await res.json();
-    setSneakers(data);
-    setLoading(false);
-  };
 
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;

@@ -45,15 +45,17 @@ export default function AdminOrders() {
   useEffect(() => {
     const token = localStorage.getItem("sv-admin");
     if (!token) { router.push("/admin"); return; }
-    fetchOrders();
+    let cancelled = false;
+    fetch("/api/orders")
+      .then((res) => {
+        if (!res.ok) throw new Error(`Failed to load orders (${res.status})`);
+        return res.json();
+      })
+      .then((data) => { if (!cancelled) setOrders(data.orders || []); })
+      .catch(() => { if (!cancelled) setOrders([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [router]);
-
-  const fetchOrders = async () => {
-    const res = await fetch("/api/orders");
-    const data = await res.json();
-    setOrders(data.orders || []);
-    setLoading(false);
-  };
 
   const updateStatus = async (orderId: string, status: Order["status"]) => {
     setUpdating(orderId);
@@ -230,7 +232,7 @@ export default function AdminOrders() {
                           <p className="text-gray-500">{order.customerEmail}</p>
                           <p className="text-gray-500">{order.customerPhone}</p>
                           <p className="text-gray-500">📍 {order.deliveryAddress}</p>
-                          {order.notes && <p className="text-gray-400 italic text-xs pt-1">"{order.notes}"</p>}
+                          {order.notes && <p className="text-gray-400 italic text-xs pt-1">&ldquo;{order.notes}&rdquo;</p>}
                         </div>
                       </div>
                       {/* Product + payment */}
