@@ -1,40 +1,35 @@
+// @paystack/inline-js v2 does not ship its own type declarations, so this
+// mirrors the documented API (see node_modules/@paystack/inline-js/README.md).
+// Keep it in sync when the package is upgraded.
+
 declare module "@paystack/inline-js" {
-  interface PaystackPopSuccess {
+  export interface PaystackSuccessResponse {
+    id: number;
     reference: string;
-    trans: string;
-    status: string;
     message: string;
-    channel: string;
-    domain: string;
-    amount: number;
-    currency: string;
-    ip_address: string;
-    metadata: Record<string, unknown>;
-    created_at: string;
-    fees: number;
   }
 
-  interface PaystackPopOptions {
-    key?: string;
-    email?: string;
-    amount?: number;
-    currency?: string;
-    reference?: string;
-    metadata?: Record<string, unknown>;
-    callback?: (response: PaystackPopSuccess) => void;
-    onClose?: () => void;
-    onSuccess?: (response: PaystackPopSuccess) => void;
+  export interface PaystackErrorResponse {
+    message: string;
+  }
+
+  export interface PaystackLoadResponse {
+    id: number;
+    customer: Record<string, unknown>;
+    accessCode: string;
+  }
+
+  export interface ResumeTransactionOptions {
+    onSuccess?: (response: PaystackSuccessResponse) => void;
+    onCancel?: () => void;
+    onError?: (error: PaystackErrorResponse) => void;
+    onLoad?: (response: PaystackLoadResponse) => void;
   }
 
   export default class PaystackPop {
     constructor();
-    resumeTransaction(
-      accessCode: string,
-      options?: {
-        onSuccess?: (response: PaystackPopSuccess) => void;
-        onClose?: () => void;
-      }
-    ): void;
-    newIframe(mode: string, options: PaystackPopOptions): void;
+    isLoaded(): boolean;
+    resumeTransaction(accessCode: string, options?: ResumeTransactionOptions): void;
+    cancelTransaction(id: number | { id: number }): void;
   }
 }

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import type { Order } from "@/lib/db";
 
 let resendClient: Resend | null = null;
 
@@ -213,4 +214,45 @@ export async function sendOwnerNotification(order: OrderEmailData): Promise<bool
     console.error("Failed to send owner notification:", error);
     return false;
   }
+}
+
+export function orderToEmailData(order: Order, paymentMethod: string, heroImage = ""): OrderEmailData {
+  return {
+    orderId: order.orderId,
+    customerName: order.customerName,
+    customerEmail: order.customerEmail,
+    sneakerName: order.sneakerName,
+    brand: order.brand,
+    size: order.size,
+    color: order.color,
+    quantity: order.quantity,
+    subtotal: order.subtotal,
+    deliveryFee: order.deliveryFee,
+    tax: order.tax,
+    totalAmount: order.totalAmount,
+    paymentMethod,
+    paymentStatus: "SUCCESSFUL",
+    deliveryAddress: order.deliveryAddress,
+    date: order.date,
+    heroImage,
+  };
+}
+
+// Called from the payment-verification route so the customer always gets a
+// receipt for money that was actually taken. Failures here must never be
+// reported to the customer as a failed payment.
+export async function notifyOrderPaid(
+  order: Order,
+  paymentMethod: string,
+  heroImage = ""
+): Promise<{ receiptSent: boolean; ownerNotified: boolean }> {
+  const data = orderToEmailData(order, paymentMethod, heroImage);
+  const [receipt, owner] = await Promise.allSettled([
+    sendCustomerReceipt(data),
+    sendOwnerNotification(data),
+  ]);
+  return {
+    receiptSent: receipt.status === "fulfilled" && receipt.value,
+    ownerNotified: owner.status === "fulfilled" && owner.value,
+  };
 }

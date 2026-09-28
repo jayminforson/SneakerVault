@@ -128,11 +128,40 @@ export async function getOrderById(orderId: string): Promise<Order | undefined> 
   return orders.find((o) => o.orderId === orderId);
 }
 
-export async function updateOrderStatus(orderId: string, status: Order["status"]): Promise<Order | null> {
+export async function updateOrder(orderId: string, updates: Partial<Order>): Promise<Order | null> {
   const orders = await getOrders();
   const idx = orders.findIndex((o) => o.orderId === orderId);
   if (idx === -1) return null;
-  orders[idx] = { ...orders[idx], status };
+  orders[idx] = { ...orders[idx], ...updates, orderId };
   await saveOrders(orders);
   return orders[idx];
 }
+
+export async function updateOrderStatus(orderId: string, status: Order["status"]): Promise<Order | null> {
+  return updateOrder(orderId, { status });
+}
+
+// Resolves a Paystack reference back to its order. Also matches references of
+// the form SV-<orderId>-<timestamp> so a superseded reference still resolves.
+export async function getOrderByPaymentReference(reference: string): Promise<Order | undefined> {
+  const orders = await getOrders();
+  return (
+    orders.find((o) => o.paymentReference === reference) ??
+    orders.find((o) => o.orderId && reference.startsWith(`SV-${o.orderId}-`))
+  );
+}
+
+// ---------- Stock ----------
+
+export async function decrementStock(sneakerId: string, size: string, quantity: number): Promise<void> {
+  const sneakers = await getSneakers();
+  const idx = sneakers.findIndex((s) => s.id === sneakerId);
+  if (idx === -1) return;
+  const sizes = sneakers[idx].sizes;
+  const sizeIdx = sizes.findIndex((s) => s.size === size);
+  if (sizeIdx === -1) return;
+  const stock = Math.max(0, sizes[sizeIdx].stock - quantity);
+  sizes[sizeIdx] = { ...sizes[sizeIdx], stock, available: stock > 0 };
+  await saveSneakers(sneakers);
+}
+

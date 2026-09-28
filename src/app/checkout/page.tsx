@@ -3,8 +3,13 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { computeTotals, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE } from "@/lib/config";
 
-interface Sneaker { id: string; name: string; brand: string; price: number; heroImage: string; colors: { name: string; image: string }[]; }
+interface Sneaker {
+  id: string; name: string; brand: string; price: number; heroImage: string;
+  colors: { name: string; image: string }[];
+  sizes: { size: string; available: boolean; stock: number }[];
+}
 type Step = "info" | "pay" | "loading" | "done" | "error";
 
 function CheckoutContent() {
@@ -14,9 +19,11 @@ function CheckoutContent() {
   const [err, setErr] = useState("");
   const [stepKey, setStepKey] = useState(0);
   const paystackRef = useRef<string>("");
+  const orderIdRef = useRef<string>("");
   const color = sp.get("color") || "";
   const size = sp.get("size") || "";
-  const qty = parseInt(sp.get("qty") || "1");
+  const requestedQty = Number(sp.get("qty") ?? 1);
+  const qty = isValidQuantity(requestedQty) ? requestedQty : 1;
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -39,11 +46,12 @@ function CheckoutContent() {
     </div>
   );
 
-  const sub = sneaker.price * qty;
-  const delivery = 25;
-  const tax = sub * 0.15;
-  const total = sub + delivery + tax;
-  const valid = name.trim() && email.trim() && phone.trim() && address.trim() && city.trim();
+  // Display-only mirror of the server's pricing; the API recomputes these
+  // from the catalogue price and never accepts client-supplied amounts.
+  const { subtotal: sub, deliveryFee: delivery, tax, totalAmount: total } = computeTotals(sneaker.price, qty);
+  const selectedSize = sneaker.sizes.find(s => s.size === size);
+  const outOfStock = !!selectedSize && (!selectedSize.available || selectedSize.stock < qty);
+  const valid = name.trim() && email.trim() && phone.trim() && address.trim() && city.trim() && !outOfStock;
 
   const colorObj = sneaker.colors.find(c => c.name === color);
   const img = colorObj?.image || sneaker.heroImage;
@@ -53,75 +61,76 @@ function CheckoutContent() {
     setStep(newStep);
   };
 
+  const settle = async (reference: string) => {
+    const verifyRes = await fetch(`/api/payment/verify?reference=${encodeURIComponent(reference)}`);
+    const verifyData = await verifyRes.json().catch(() => ({}));
+    if (!verifyRes.ok) throw new Error(verifyData.error || "Payment verification failed");
+    if (verifyData.status !== "SUCCESSFUL") {
+      throw new Error(verifyData.message || "Payment verification failed");
+    }
+    goToStep("done");
+  };
+
   const pay = async () => {
     goToStep("loading");
     try {
-      // 1. Create the order
-      const r1 = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sneakerId: sneaker.id, sneakerName: sneaker.name, brand: sneaker.brand,
-          color, size, quantity: qty, customerName: name, customerEmail: email,
-          customerPhone: phone, deliveryAddress: `${address}, ${city}`, notes,
-          subtotal: sub, deliveryFee: delivery, tax, totalAmount: total, currency: "GHS",
-        }),
-      });
-      const o = await r1.json();
-      if (!r1.ok) throw new Error(o.error);
+      // 1. Create the order once, then reuse it across retries so a failed
+      //    attempt never leaves a duplicate PENDING row behind.
+      if (!orderIdRef.current) {
+        const r1 = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sneakerId: sneaker.id, color, size, quantity: qty,
+            customerName: name, customerEmail: email, customerPhone: phone,
+            deliveryAddress: `${address}, ${city}`, notes,
+          }),
+        });
+        const o = await r1.json().catch(() => ({}));
+        if (!r1.ok) throw new Error(o.error || "Could not start your order");
+        orderIdRef.current = o.orderId;
+      }
 
-      // 2. Initialize Paystack transaction
+      // 2. Initialize Paystack. The server prices this from the stored order.
       const r2 = await fetch("/api/payment/initialize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email,
-          amount: total,
-          orderId: o.orderId,
-          customerName: name,
-        }),
+        body: JSON.stringify({ email, orderId: orderIdRef.current, customerName: name }),
       });
-      const p = await r2.json();
-      if (!r2.ok) throw new Error(p.error);
+      const p = await r2.json().catch(() => ({}));
+
+      if (r2.status === 409) {
+        // The order was already paid — just re-confirm it instead of failing.
+        const lookup = await fetch(`/api/orders?orderId=${encodeURIComponent(orderIdRef.current)}`);
+        const body = await lookup.json().catch(() => ({}));
+        const reference = body?.order?.paymentReference;
+        if (reference) return await settle(reference);
+        throw new Error(p.error || "This order has already been paid");
+      }
+      if (!r2.ok) throw new Error(p.error || "Could not start payment");
 
       paystackRef.current = p.reference;
 
-      // 3. Open Paystack popup
+      // 3. Open the Paystack popup
       const PaystackPop = (await import("@paystack/inline-js")).default;
       const popup = new PaystackPop();
 
       popup.resumeTransaction(p.accessCode, {
-        onSuccess: async () => {
-          // 4. Verify the transaction
+        onSuccess: async (response) => {
+          goToStep("loading");
           try {
-            const verifyRes = await fetch(`/api/payment/verify?reference=${encodeURIComponent(paystackRef.current)}`);
-            const verifyData = await verifyRes.json();
-
-            if (verifyData.status === "SUCCESSFUL") {
-              // 5. Send email notifications
-              await fetch("/api/notifications", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  orderId: o.orderId, customerName: name, customerEmail: email,
-                  customerPhone: phone, sneakerName: sneaker.name, brand: sneaker.brand,
-                  size, color, quantity: qty, subtotal: sub, deliveryFee: delivery,
-                  tax, totalAmount: total, paymentMethod: verifyData.channel || "Paystack",
-                  paymentStatus: "SUCCESSFUL", deliveryAddress: `${address}, ${city}`,
-                  heroImage: sneaker.heroImage,
-                }),
-              });
-              goToStep("done");
-            } else {
-              throw new Error("Payment verification failed");
-            }
+            await settle(response?.reference || paystackRef.current);
           } catch (e) {
             setErr(e instanceof Error ? e.message : "Payment verification failed");
             goToStep("error");
           }
         },
-        onClose: () => {
-          setErr("Payment was cancelled");
+        onCancel: () => {
+          setErr("Payment cancelled — you have not been charged.");
+          goToStep("error");
+        },
+        onError: (e) => {
+          setErr(e?.message || "Paystack could not be loaded. Please try again.");
           goToStep("error");
         },
       });
@@ -203,8 +212,13 @@ function CheckoutContent() {
                       <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> Email receipt</p>
                     </div>
                   </div>
-                  <button onClick={pay} className="w-full py-3.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 transition-all duration-200 btn-press shadow-lg shadow-black/10">
-                    Pay GH₵ {total.toFixed(2)}
+                  {outOfStock && (
+                    <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+                      Size {size} only has {selectedSize?.stock ?? 0} left in stock. Go back and pick another size or quantity.
+                    </p>
+                  )}
+                  <button onClick={pay} disabled={outOfStock} className="w-full py-3.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 btn-press shadow-lg shadow-black/10">
+                    Pay {CURRENCY_SYMBOL} {total.toFixed(2)}
                   </button>
                   <button onClick={() => goToStep("info")} className="text-xs text-gray-400 hover:text-gray-900 transition-colors flex items-center gap-1">
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -263,10 +277,10 @@ function CheckoutContent() {
                 </div>
               </div>
               <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs">
-                <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>GH₵ {sub.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Delivery</span><span>GH₵ {delivery.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Tax (15%)</span><span>GH₵ {tax.toFixed(2)}</span></div>
-                <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-100"><span>Total</span><span>GH₵ {total.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>{CURRENCY_SYMBOL} {sub.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Delivery</span><span>{CURRENCY_SYMBOL} {delivery.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Tax ({Math.round(TAX_RATE * 100)}%)</span><span>{CURRENCY_SYMBOL} {tax.toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-100"><span>Total</span><span>{CURRENCY_SYMBOL} {total.toFixed(2)}</span></div>
               </div>
             </div>
           </div>
