@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { CURRENCY_SYMBOL } from "@/lib/config";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Order {
@@ -107,7 +109,7 @@ export default function AdminOrders() {
             </Link>
             <span className="text-gray-300">|</span>
             <div className="flex items-center gap-2.5">
-              <img src="/logo-light.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" />
+              <Image unoptimized src="/logo-light.png" alt="SneakerVault" width={32} height={32} className="h-8 w-8 rounded-lg object-cover" />
               <h1 className="text-sm font-semibold text-gray-900">SneakerVault Admin</h1>
             </div>
           </div>
@@ -141,12 +143,13 @@ export default function AdminOrders() {
             <p className="text-2xl sm:text-3xl font-bold text-yellow-600 mt-1">{stats.pending}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Fulfilled</p>
-            <p className="text-2xl sm:text-3xl font-bold text-green-600 mt-1">{stats.paid + stats.fulfilled}</p>
+            <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Paid</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600 mt-1">{stats.paid + stats.fulfilled}</p>
+            <p className="text-[11px] text-gray-400 mt-1">{stats.fulfilled} fulfilled</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
             <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Revenue</p>
-            <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">GH₵ {stats.revenue.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{CURRENCY_SYMBOL} {stats.revenue.toFixed(2)}</p>
           </div>
         </div>
 
@@ -205,7 +208,7 @@ export default function AdminOrders() {
                   </div>
                   {/* Amount */}
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-gray-900">GH₵ {order.totalAmount?.toFixed(2)}</p>
+                    <p className="text-sm font-bold text-gray-900">{CURRENCY_SYMBOL} {order.totalAmount?.toFixed(2)}</p>
                     <p className="text-xs text-gray-400">Qty {order.quantity}</p>
                   </div>
                   <svg

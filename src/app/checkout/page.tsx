@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { computeTotals, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE } from "@/lib/config";
 
 interface Sneaker {
@@ -14,7 +15,12 @@ type Step = "info" | "pay" | "loading" | "done" | "error";
 
 function CheckoutContent() {
   const sp = useSearchParams();
-  const [sneaker, setSneaker] = useState<Sneaker | null>(null);
+  const id = sp.get("id");
+  // null while the request for `id` is in flight. Storing the id alongside the
+  // result means an id change never leaves the previous product on screen, and
+  // `error` keeps a server failure distinct from a genuine 404.
+  const [result, setResult] = useState<{ id: string; value: Sneaker | null; error: boolean } | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [step, setStep] = useState<Step>("info");
   const [err, setErr] = useState("");
   const [stepKey, setStepKey] = useState(0);
@@ -33,16 +39,70 @@ function CheckoutContent() {
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
-    const id = sp.get("id");
-    if (id) fetch(`/api/sneakers?id=${id}`).then(r => r.json()).then(setSneaker);
-  }, [sp]);
+    if (!id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/sneakers?id=${encodeURIComponent(id)}`);
+        if (cancelled) return;
+        if (res.status === 404) { setResult({ id, value: null, error: false }); return; }
+        if (!res.ok) { setResult({ id, value: null, error: true }); return; }
+        const data = await res.json();
+        if (cancelled) return;
+        setResult({ id, value: data?.id ? data : null, error: false });
+      } catch {
+        if (!cancelled) setResult({ id, value: null, error: true });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, reloadKey]);
 
-  if (!sneaker) return (
+  if (!id) return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">404</p>
+      <h1 className="mt-3 text-xl font-bold tracking-tight">This pair isn&apos;t available.</h1>
+      <p className="mt-2 text-sm text-gray-500">The link is missing a product.</p>
+      <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+        Back to the store
+      </Link>
+    </div>
+  );
+
+  if (result === null || result.id !== id) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="text-center">
         <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" />
         <p className="text-sm text-gray-400">Loading...</p>
       </div>
+    </div>
+  );
+
+  if (result.error) return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <p className="text-xs uppercase tracking-[0.2em] text-red-400">Something went wrong</p>
+      <h1 className="mt-3 text-xl font-bold tracking-tight">We couldn&apos;t load this product.</h1>
+      <p className="mt-2 text-sm text-gray-500">Please check your connection and try again.</p>
+      <div className="mt-5 flex items-center gap-3">
+        <button
+          onClick={() => { setResult(null); setReloadKey((k) => k + 1); }}
+          className="rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+        >
+          Try again
+        </button>
+        <Link href="/" className="text-sm text-gray-400 transition-colors hover:text-gray-900">Back to the store</Link>
+      </div>
+    </div>
+  );
+
+  const sneaker = result.value;
+  if (!sneaker) return (
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">404</p>
+      <h1 className="mt-3 text-xl font-bold tracking-tight">This pair isn&apos;t available.</h1>
+      <p className="mt-2 text-sm text-gray-500">It may have sold out or been removed from the catalogue.</p>
+      <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+        Back to the store
+      </Link>
     </div>
   );
 
@@ -154,7 +214,7 @@ function CheckoutContent() {
       <nav className="border-b border-gray-200 bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center">
           <Link href="/" className="flex items-center gap-2">
-            <img src="/logo-light.png" alt="SneakerVault" className="h-10 w-10 rounded-lg object-cover" />
+            <Image src="/logo-light.png" alt="SneakerVault" width={40} height={40} className="h-10 w-10 rounded-lg object-cover" />
             <span className="text-lg font-bold tracking-tight">SneakerVault</span>
           </Link>
         </div>
@@ -269,7 +329,7 @@ function CheckoutContent() {
           <div className="md:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm sticky top-20 space-y-4">
               <div className="flex gap-3">
-                <img src={img} alt="" className="w-16 h-16 rounded-xl object-cover bg-gray-50" />
+                <Image src={img} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-gray-50" />
                 <div>
                   <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{sneaker.brand}</p>
                   <p className="text-sm font-medium">{sneaker.name}</p>

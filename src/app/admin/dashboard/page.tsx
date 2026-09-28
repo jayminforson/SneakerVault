@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { CURRENCY_SYMBOL } from "@/lib/config";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Sneaker {
@@ -13,7 +14,6 @@ interface Sneaker {
 export default function AdminDashboard() {
   const [sneakers, setSneakers] = useState<Sneaker[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const { authenticated, logout } = useAdminAuth();
 
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function AdminDashboard() {
               View Store
             </Link>
             <span className="text-gray-300">|</span>
-            <div className="flex items-center gap-2.5"><img src="/logo-light.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">SneakerVault Admin</h1></div>
+            <div className="flex items-center gap-2.5"><Image unoptimized src="/logo-light.png" alt="SneakerVault" width={32} height={32} className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">SneakerVault Admin</h1></div>
           </div>
           <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-900">
             Log out
@@ -110,9 +110,12 @@ export default function AdminDashboard() {
                   <tr key={sneaker.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <img
+                        <Image
+                          unoptimized
                           src={sneaker.heroImage}
                           alt={sneaker.name}
+                          width={48}
+                          height={48}
                           className="w-12 h-12 rounded-lg object-cover bg-gray-100"
                         />
                         <span className="text-sm font-medium text-gray-900 truncate max-w-[200px]">
@@ -122,9 +125,9 @@ export default function AdminDashboard() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">{sneaker.brand}</td>
                     <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-gray-900">GH₵ {sneaker.price.toFixed(2)}</span>
+                      <span className="text-sm font-medium text-gray-900">{CURRENCY_SYMBOL} {sneaker.price.toFixed(2)}</span>
                       {sneaker.originalPrice && (
-                        <span className="text-xs text-gray-400 line-through ml-2">GH₵ {sneaker.originalPrice.toFixed(2)}</span>
+                        <span className="text-xs text-gray-400 line-through ml-2">{CURRENCY_SYMBOL} {sneaker.originalPrice.toFixed(2)}</span>
                       )}
                     </td>
                     <td className="px-6 py-4 hidden md:table-cell">

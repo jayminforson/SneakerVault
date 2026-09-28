@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { parseSizeLabel, convertSize } from "@/lib/size-conversion";
+import Image from "next/image";
+import { CURRENCY_SYMBOL } from "@/lib/config";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface Color { name: string; hex: string; image: string; }
@@ -148,7 +150,7 @@ function EditForm() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-4">
           <button onClick={() => router.back()} className="text-sm text-gray-500 hover:text-gray-900">&larr; Back</button>
-          <div className="flex items-center gap-2.5"><img src="/logo-light.png" alt="SneakerVault" className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">{isEditing ? "Edit" : "Add"} Sneaker</h1></div>
+          <div className="flex items-center gap-2.5"><Image unoptimized src="/logo-light.png" alt="SneakerVault" width={32} height={32} className="h-8 w-8 rounded-lg object-cover" /><h1 className="text-sm font-semibold text-gray-900">{isEditing ? "Edit" : "Add"} Sneaker</h1></div>
         </div>
       </header>
 
@@ -162,8 +164,8 @@ function EditForm() {
           </div>
           <div><label className="block text-xs text-gray-500 mb-1">Description</label><textarea className={inputCls + " resize-none"} rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Short product description..." /></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div><label className="block text-xs text-gray-500 mb-1">Price (GH₵) *</label><input className={inputCls} type="number" step="0.01" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="899.99" /></div>
-            <div><label className="block text-xs text-gray-500 mb-1">Original Price (GH₵)</label><input className={inputCls} type="number" step="0.01" value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} placeholder="1099.99" /></div>
+            <div><label className="block text-xs text-gray-500 mb-1">Price ({CURRENCY_SYMBOL}) *</label><input className={inputCls} type="number" step="0.01" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} placeholder="899.99" /></div>
+            <div><label className="block text-xs text-gray-500 mb-1">Original Price ({CURRENCY_SYMBOL})</label><input className={inputCls} type="number" step="0.01" value={form.originalPrice} onChange={e => setForm(f => ({ ...f, originalPrice: e.target.value }))} placeholder="1099.99" /></div>
           </div>
           <div><label className="block text-xs text-gray-500 mb-1">Tags (comma separated)</label><input className={inputCls} value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} placeholder="Popular, Running, Classic" /></div>
         </section>
@@ -172,7 +174,7 @@ function EditForm() {
         <section className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Main Image</h2>
           <div className="flex items-start gap-4">
-            {form.heroImage && <img src={form.heroImage} alt="Hero" className="w-24 h-24 rounded-lg object-cover bg-gray-100" />}
+            {form.heroImage && <Image unoptimized src={form.heroImage} alt="Hero" width={96} height={96} className="w-24 h-24 rounded-lg object-cover bg-gray-100" />}
             <label className="cursor-pointer">
               <span className="text-sm text-gray-600 hover:text-black underline">
                 {uploading === "hero" ? "Uploading..." : form.heroImage ? "Change image" : "Upload image"}
@@ -197,7 +199,7 @@ function EditForm() {
                 {uploading === i ? "Uploading..." : "Upload"}
                 <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && handleImageUpload(e.target.files[0], i)} />
               </label>
-              {c.image && <img src={c.image} alt="" className="w-9 h-9 rounded object-cover" />}
+              {c.image && <Image unoptimized src={c.image} alt="" width={36} height={36} className="w-9 h-9 rounded object-cover" />}
               <input className="border border-gray-300 rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-black" value={c.image} onChange={e => { const n = [...colors]; n[i].image = e.target.value; setColors(n); }} placeholder="Image URL" />
               {colors.length > 1 && <button onClick={() => setColors(colors.filter((_, j) => j !== i))} className="text-xs text-red-500 hover:text-red-700">Remove</button>}
             </div>

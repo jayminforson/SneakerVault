@@ -1,7 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSneakers, getSneakerById, addSneaker, updateSneaker, deleteSneaker } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
+import { isAllowedImageUrl, ALLOWED_IMAGE_HOST_LIST } from "@/lib/images";
 import { v4 as uuidv4 } from "uuid";
+
+// Product images are rendered with next/image, which throws for hosts outside
+// its allowlist. Reject at the door so a bad URL can never reach the storefront.
+function imageHostError(body: Record<string, unknown>): string | null {
+  if (!isAllowedImageUrl(body.heroImage)) {
+    return `Image URL must come from: ${ALLOWED_IMAGE_HOST_LIST}`;
+  }
+  const colors = body.colors;
+  if (Array.isArray(colors)) {
+    for (const color of colors) {
+      if (color && !isAllowedImageUrl(color.image)) {
+        return `Colour image URLs must come from: ${ALLOWED_IMAGE_HOST_LIST}`;
+      }
+    }
+  }
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -18,6 +36,11 @@ export async function POST(request: NextRequest) {
   const denied = requireAdmin(request);
   if (denied) return denied;
   const body = await request.json();
+  if (!body.heroImage) {
+    return NextResponse.json({ error: "An image URL is required" }, { status: 400 });
+  }
+  const hostError = imageHostError(body);
+  if (hostError) return NextResponse.json({ error: hostError }, { status: 400 });
   const sneaker = {
     id: body.id || uuidv4(),
     name: body.name || "", brand: body.brand || "", description: body.description || "",
@@ -35,6 +58,8 @@ export async function PUT(request: NextRequest) {
   if (denied) return denied;
   const body = await request.json();
   if (!body.id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
+  const hostError = imageHostError(body);
+  if (hostError) return NextResponse.json({ error: hostError }, { status: 400 });
   const updated = await updateSneaker(body.id, body);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(updated);

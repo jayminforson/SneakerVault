@@ -1,3 +1,5 @@
+import { IMAGE_HOSTS } from "@/lib/image-hosts";
+
 export const MAX_IMAGE_BYTES = 4 * 1024 * 1024; // 4 MB
 
 // Extension is derived from the *validated* MIME type, never from the client's
@@ -10,6 +12,30 @@ const ALLOWED_TYPES: Record<string, string> = {
 };
 
 export const ALLOWED_TYPE_LIST = Object.keys(ALLOWED_TYPES).join(", ");
+
+// next/image throws at render time for any host outside its remote allowlist,
+// which would take the storefront down, not just break one image. The write
+// path therefore has to reject the same hosts the optimizer would reject.
+// An empty value means "no image", which callers handle separately.
+export function isAllowedImageUrl(raw: unknown): boolean {
+  if (raw == null || raw === "") return true;
+  if (typeof raw !== "string") return false;
+  if (raw.startsWith("/")) return true;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol !== "https:") return false;
+
+  return IMAGE_HOSTS.some((host) =>
+    host.startsWith("*.") ? parsed.hostname.endsWith(host.slice(1)) : parsed.hostname === host
+  );
+}
+
+export const ALLOWED_IMAGE_HOST_LIST = IMAGE_HOSTS.join(", ");
 
 export type ImageValidation =
   | { ok: true; ext: string; type: string }

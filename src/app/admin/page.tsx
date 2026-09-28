@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function AdminLogin() {
   const [password, setPassword] = useState("");
@@ -52,7 +53,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-sm px-6 animate-fade-in">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8">
           <div className="mb-8 text-center">
-            <div className="flex items-center justify-center gap-3 mb-3"><img src="/logo-light.png" alt="SneakerVault" className="h-16 w-16 rounded-xl object-cover" /><h1 className="text-2xl font-bold tracking-tight text-gray-900">SneakerVault</h1></div>
+            <div className="flex items-center justify-center gap-3 mb-3"><Image src="/logo-light.png" alt="SneakerVault" width={64} height={64} className="h-16 w-16 rounded-xl object-cover" /><h1 className="text-2xl font-bold tracking-tight text-gray-900">SneakerVault</h1></div>
             <p className="text-sm text-gray-500">Admin login</p>
           </div>
 

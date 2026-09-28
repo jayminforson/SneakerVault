@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import type { Order } from "@/lib/db";
+import { CURRENCY_SYMBOL, TAX_RATE } from "@/lib/config";
 
 let resendClient: Resend | null = null;
 
@@ -78,10 +79,10 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
       <div style="margin-bottom:24px;">
         <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;">Payment</h3>
         <table style="width:100%;font-size:13px;color:#444;border-collapse:collapse;">
-          <tr><td style="padding:6px 0;">Subtotal</td><td style="padding:6px 0;text-align:right;">GH₵ ${order.subtotal.toFixed(2)}</td></tr>
-          <tr><td style="padding:6px 0;">Delivery</td><td style="padding:6px 0;text-align:right;">GH₵ ${order.deliveryFee.toFixed(2)}</td></tr>
-          <tr><td style="padding:6px 0;">Tax (15%)</td><td style="padding:6px 0;text-align:right;">GH₵ ${order.tax.toFixed(2)}</td></tr>
-          <tr style="border-top:1px solid #eee;"><td style="padding:8px 0;font-weight:700;font-size:15px;color:#111;">Total Paid</td><td style="padding:8px 0;text-align:right;font-weight:700;font-size:15px;color:#111;">GH₵ ${order.totalAmount.toFixed(2)}</td></tr>
+          <tr><td style="padding:6px 0;">Subtotal</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.subtotal.toFixed(2)}</td></tr>
+          <tr><td style="padding:6px 0;">Delivery</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.deliveryFee.toFixed(2)}</td></tr>
+          <tr><td style="padding:6px 0;">Tax (${Math.round(TAX_RATE * 100)}%)</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}</td></tr>
+          <tr style="border-top:1px solid #eee;"><td style="padding:8px 0;font-weight:700;font-size:15px;color:#111;">Total Paid</td><td style="padding:8px 0;text-align:right;font-weight:700;font-size:15px;color:#111;">${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}</td></tr>
         </table>
         <p style="font-size:12px;color:#888;margin:8px 0 0;">Payment via ${order.paymentMethod} · ${order.paymentStatus}</p>
       </div>
@@ -146,7 +147,7 @@ function generateOwnerNotificationHTML(order: OrderEmailData): string {
       <div style="background:#f0fdf4;border-radius:8px;padding:16px;margin-bottom:20px;">
         <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">💰 Payment</h3>
         <table style="width:100%;font-size:13px;color:#333;">
-          <tr><td style="padding:3px 0;">Amount</td><td style="padding:3px 0;text-align:right;font-weight:700;font-size:16px;">GH₵ ${order.totalAmount.toFixed(2)}</td></tr>
+          <tr><td style="padding:3px 0;">Amount</td><td style="padding:3px 0;text-align:right;font-weight:700;font-size:16px;">${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}</td></tr>
           <tr><td style="padding:3px 0;">Method</td><td style="padding:3px 0;text-align:right;">${order.paymentMethod}</td></tr>
           <tr><td style="padding:3px 0;">Status</td><td style="padding:3px 0;text-align:right;color:#22c55e;font-weight:600;">${order.paymentStatus}</td></tr>
         </table>
@@ -205,7 +206,7 @@ export async function sendOwnerNotification(order: OrderEmailData): Promise<bool
     await resend.emails.send({
       from: FROM_EMAIL,
       to: OWNER_EMAIL,
-      subject: `🛍️ New Order: ${order.brand} ${order.sneakerName} — GH₵ ${order.totalAmount.toFixed(2)}`,
+      subject: `🛍️ New Order: ${order.brand} ${order.sneakerName} — ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}`,
       html: generateOwnerNotificationHTML(order),
     });
     console.log(`Owner notification sent for order ${order.orderId}`);

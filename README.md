@@ -26,6 +26,7 @@ cp .env.example .env.local
 Fill in `.env.local` — see [Environment variables](#environment-variables).
 
 ```bash
+npm run db:seed   # create the schema and load the catalogue
 npm run dev
 ```
 
@@ -39,6 +40,7 @@ Open http://localhost:3000. The admin panel is at http://localhost:3000/admin.
 | `npm run build` | Production build |
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
+| `npm run db:seed` | Apply `scripts/schema.sql` and seed `data/sneakers.json` (idempotent) |
 
 ## Environment variables
 
@@ -60,12 +62,18 @@ All are documented inline in [`.env.example`](.env.example).
 src/
   app/              Pages (App Router)
     admin/          Login, dashboard, edit, orders
-    api/            Route handlers (sneakers, orders, payment, upload, auth, notifications)
-  lib/              db, paystack, email, size-conversion, auth
+    api/            Route handlers (sneakers, orders, payment/*, upload, admin/auth)
+    error.tsx       Route error boundary
+    loading.tsx     Route transition loading state
+    not-found.tsx   404
+  lib/              db, queries, config, auth, email, paystack, images, size-conversion
+  hooks/            use-admin-auth (admin session probe)
   types/            Shared TypeScript declarations
 data/
   sneakers.json     Seed data for the product catalogue
 scripts/
+  schema.sql        Postgres schema
+  db-seed.mjs       Applies the schema and loads the catalogue
 ```
 
 ## Deploy
