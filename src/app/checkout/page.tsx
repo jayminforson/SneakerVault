@@ -293,7 +293,7 @@ function CheckoutContent() {
         )}
       </SiteNav>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Progress */}
         <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8">
           {steps.map((s, i) => {
@@ -401,20 +401,20 @@ function CheckoutContent() {
           {/* Summary */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm sticky top-20 space-y-4">
-              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              <div className="space-y-4 max-h-72 overflow-y-auto pr-1">
                 {lines.map((l) => (
-                  <div key={`${l.sneakerId}|${l.size}|${l.color}`} className="flex gap-3">
+                  <div key={`${l.sneakerId}|${l.size}|${l.color}`} className="flex gap-3 items-start">
                     <Image src={l.image} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-gray-50 shrink-0" />
                     <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{l.brand}</p>
+                      <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium truncate">{l.brand}</p>
                       <p className="text-sm font-medium truncate">{l.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">
                         {l.size}{l.color ? ` · ${l.color}` : ""} · ×{l.quantity}
                       </p>
+                      <p className="text-xs font-semibold mt-1 text-right tabular-nums">
+                        {CURRENCY_SYMBOL} {(l.price * l.quantity).toFixed(2)}
+                      </p>
                     </div>
-                    <p className="text-xs font-semibold shrink-0 tabular-nums">
-                      {CURRENCY_SYMBOL} {(l.price * l.quantity).toFixed(2)}
-                    </p>
                   </div>
                 ))}
               </div>
