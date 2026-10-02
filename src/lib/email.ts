@@ -44,7 +44,7 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
     <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
       <!-- Header -->
       <div style="text-align:center;margin-bottom:32px;">
-        <img src="https://sneakervault.live/logo-light.png" alt="SneakerVault" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin:0 auto 12px;display:block;" />
+        <img src="https://www.sneakervault.live/logo-light.png" alt="SneakerVault" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin:0 auto 12px;display:block;" />
         <h1 style="font-size:24px;font-weight:700;margin:0;color:#111;">SneakerVault</h1>
         <div style="width:40px;height:2px;background:#111;margin:12px auto;"></div>
       </div>
@@ -105,6 +105,41 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
 </html>`;
 }
 
+// Plain-text alternative. Sending HTML alone is a standard spam signal, and it
+// is also what a client shows when it refuses to render the markup.
+function generateCustomerReceiptText(order: OrderEmailData): string {
+  return `SneakerVault
+============
+
+Order Confirmed!
+
+Thanks for shopping with us, ${order.customerName}.
+
+Order ID: ${order.orderId}
+Date: ${order.date}
+
+ITEM
+${order.brand} ${order.sneakerName}
+Size: ${order.size} - Color: ${order.color} - Qty: ${order.quantity}
+
+PAYMENT
+Subtotal: ${CURRENCY_SYMBOL} ${order.subtotal.toFixed(2)}
+Delivery: ${CURRENCY_SYMBOL} ${order.deliveryFee.toFixed(2)}
+Tax (${Math.round(TAX_RATE * 100)}%): ${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}
+Total Paid: ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}
+
+Payment via ${order.paymentMethod} - ${order.paymentStatus}
+
+DELIVERY ADDRESS
+${order.deliveryAddress}
+
+Your order will be processed within 24 hours.
+Questions? Reply to this email.
+
+Thank you for choosing SneakerVault.
+`;
+}
+
 function generateOwnerNotificationHTML(order: OrderEmailData): string {
   return `
 <!DOCTYPE html>
@@ -115,7 +150,7 @@ function generateOwnerNotificationHTML(order: OrderEmailData): string {
     <div style="background:#fff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">
       <!-- Header -->
       <div style="margin-bottom:24px;display:flex;align-items:center;gap:10px;">
-        <img src="https://sneakervault.live/logo-light.png" alt="SneakerVault" style="width:36px;height:36px;border-radius:6px;object-fit:cover;" />
+        <img src="https://www.sneakervault.live/logo-light.png" alt="SneakerVault" style="width:36px;height:36px;border-radius:6px;object-fit:cover;" />
         <h1 style="font-size:20px;font-weight:700;margin:0;color:#111;">New Order — SneakerVault</h1>
       </div>
 
@@ -163,6 +198,30 @@ function generateOwnerNotificationHTML(order: OrderEmailData): string {
 </html>`;
 }
 
+function generateOwnerNotificationText(order: OrderEmailData): string {
+  return `New Order - SneakerVault
+
+Order ID: ${order.orderId}
+Date: ${order.date}
+
+BUYER
+${order.customerName}
+${order.customerEmail}
+${order.deliveryAddress}
+
+PRODUCT
+${order.brand} ${order.sneakerName}
+Size: ${order.size} - Color: ${order.color} - Qty: ${order.quantity}
+
+PAYMENT
+Amount: ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}
+Method: ${order.paymentMethod}
+Status: ${order.paymentStatus}
+
+Log in to your admin dashboard to manage this order.
+`;
+}
+
 export async function sendCustomerReceipt(order: OrderEmailData): Promise<boolean> {
   if (!order.customerEmail) {
     console.error("No customer email provided, skipping receipt");
@@ -179,8 +238,12 @@ export async function sendCustomerReceipt(order: OrderEmailData): Promise<boolea
     await resend.emails.send({
       from: FROM_EMAIL,
       to: order.customerEmail,
+      // Replies must reach a monitored mailbox: the root domain has no MX, so
+      // anything addressed back to receipts@sneakervault.live would bounce.
+      replyTo: OWNER_EMAIL || undefined,
       subject: `Order Confirmed — ${order.brand} ${order.sneakerName} (${order.orderId})`,
       html: generateCustomerReceiptHTML(order),
+      text: generateCustomerReceiptText(order),
     });
     console.log(`Receipt sent to ${order.customerEmail} for order ${order.orderId}`);
     return true;
@@ -206,8 +269,10 @@ export async function sendOwnerNotification(order: OrderEmailData): Promise<bool
     await resend.emails.send({
       from: FROM_EMAIL,
       to: OWNER_EMAIL,
+      replyTo: OWNER_EMAIL || undefined,
       subject: `🛍️ New Order: ${order.brand} ${order.sneakerName} — ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}`,
       html: generateOwnerNotificationHTML(order),
+      text: generateOwnerNotificationText(order),
     });
     console.log(`Owner notification sent for order ${order.orderId}`);
     return true;
