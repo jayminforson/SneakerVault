@@ -276,6 +276,8 @@ function CheckoutContent() {
     }
   };
 
+  const backHref = id ? `/sneaker?id=${encodeURIComponent(id)}` : "/cart";
+
   const inputCls = "w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-black focus:border-transparent transition-shadow";
 
   const steps = [
@@ -288,9 +290,10 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-gray-50">
       <SiteNav>
-        {!id && (
-          <Link href="/cart" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">Edit cart</Link>
-        )}
+        <Link href={backHref} className="text-sm text-gray-400 hover:text-gray-900 transition-colors flex items-center gap-1">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          Back
+        </Link>
       </SiteNav>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
@@ -330,6 +333,10 @@ function CheckoutContent() {
                   <button onClick={() => goToStep("pay")} disabled={!valid} className="w-full py-3.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 btn-press shadow-lg shadow-black/10">
                     Continue to payment
                   </button>
+                  <Link href={backHref} className="text-xs text-gray-400 hover:text-gray-900 transition-colors flex items-center justify-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+                    {id ? "Back to the product" : "Back to cart"}
+                  </Link>
                 </div>
               )}
 
