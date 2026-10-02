@@ -4,7 +4,10 @@
 export const CURRENCY = "GHS";
 export const CURRENCY_SYMBOL = "GH₵";
 export const DELIVERY_FEE = 25;
-export const TAX_RATE = 0.15;
+// Tax added on top of the subtotal. Set to 0 to disable it entirely — the
+// cart, checkout and receipts then omit the row instead of showing a zero.
+// Any non-zero value (e.g. 0.15) charges it and shows the percentage again.
+export const TAX_RATE = 0;
 export const MAX_QUANTITY = 99;
 
 export interface PaymentMethod {

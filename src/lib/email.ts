@@ -109,7 +109,7 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
         <table style="width:100%;font-size:13px;color:#444;border-collapse:collapse;">
           <tr><td style="padding:6px 0;">Subtotal</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.subtotal.toFixed(2)}</td></tr>
           <tr><td style="padding:6px 0;">Delivery</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.deliveryFee.toFixed(2)}</td></tr>
-          <tr><td style="padding:6px 0;">Tax (${Math.round(TAX_RATE * 100)}%)</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}</td></tr>
+          ${TAX_RATE > 0 ? `<tr><td style="padding:6px 0;">Tax (${Math.round(TAX_RATE * 100)}%)</td><td style="padding:6px 0;text-align:right;">${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}</td></tr>` : ""}
           <tr style="border-top:1px solid #eee;"><td style="padding:8px 0;font-weight:700;font-size:15px;color:#111;">Total Paid</td><td style="padding:8px 0;text-align:right;font-weight:700;font-size:15px;color:#111;">${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}</td></tr>
         </table>
         <p style="font-size:12px;color:#888;margin:8px 0 0;">Payment via ${order.paymentMethod} · ${order.paymentStatus}</p>
@@ -154,8 +154,7 @@ ${order.items.map((line) => `- ${line.brand} ${line.name}
 PAYMENT
 Subtotal: ${CURRENCY_SYMBOL} ${order.subtotal.toFixed(2)}
 Delivery: ${CURRENCY_SYMBOL} ${order.deliveryFee.toFixed(2)}
-Tax (${Math.round(TAX_RATE * 100)}%): ${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}
-Total Paid: ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}
+${TAX_RATE > 0 ? `Tax (${Math.round(TAX_RATE * 100)}%): ${CURRENCY_SYMBOL} ${order.tax.toFixed(2)}\n` : ""}Total Paid: ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}
 
 Payment via ${order.paymentMethod} - ${order.paymentStatus}
 

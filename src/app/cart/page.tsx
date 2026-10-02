@@ -124,7 +124,9 @@ export default function CartPage() {
                   <div className="border-b border-gray-100 pb-3 space-y-1.5 text-xs">
                     <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span className="tabular-nums">{CURRENCY_SYMBOL} {totals.subtotal.toFixed(2)}</span></div>
                     <div className="flex justify-between"><span className="text-gray-400">Delivery</span><span className="tabular-nums">{CURRENCY_SYMBOL} {totals.deliveryFee.toFixed(2)}</span></div>
-                    <div className="flex justify-between"><span className="text-gray-400">Tax ({Math.round(TAX_RATE * 100)}%)</span><span className="tabular-nums">{CURRENCY_SYMBOL} {totals.tax.toFixed(2)}</span></div>
+                    {TAX_RATE > 0 && (
+                      <div className="flex justify-between"><span className="text-gray-400">Tax ({Math.round(TAX_RATE * 100)}%)</span><span className="tabular-nums">{CURRENCY_SYMBOL} {totals.tax.toFixed(2)}</span></div>
+                    )}
                   </div>
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total</span>
