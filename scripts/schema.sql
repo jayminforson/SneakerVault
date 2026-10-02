@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS orders (
   color text NOT NULL DEFAULT '',
   size text NOT NULL DEFAULT '',
   quantity integer NOT NULL DEFAULT 1,
+  items jsonb,
   customer_name text NOT NULL,
   customer_email text NOT NULL,
   customer_phone text NOT NULL,
@@ -51,6 +52,10 @@ CREATE TABLE IF NOT EXISTS orders (
   created_at timestamptz NOT NULL DEFAULT now(),
   date text NOT NULL DEFAULT ''
 );
+
+-- Migration for tables created before multi-item carts existed. Idempotent, so
+-- `npm run db:seed` can safely re-run against an existing database.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS items jsonb;
 
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
 CREATE INDEX IF NOT EXISTS orders_payment_reference_idx ON orders (payment_reference);

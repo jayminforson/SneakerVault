@@ -4,7 +4,9 @@ import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { computeTotals, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE, PAYMENT_METHODS, paymentMethodsSentence } from "@/lib/config";
+import { computeTotalsForLines, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE, PAYMENT_METHODS, paymentMethodsSentence } from "@/lib/config";
+import SiteNav from "@/components/site-nav";
+import { useCart } from "@/components/cart-context";
 
 interface Sneaker {
   id: string; name: string; brand: string; price: number; heroImage: string;
@@ -12,6 +14,20 @@ interface Sneaker {
   sizes: { size: string; available: boolean; stock: number }[];
 }
 type Step = "info" | "pay" | "loading" | "done" | "error";
+
+// A row the summary and the order request both render from. Single-product
+// buy-now builds one; the cart builds as many as the customer added.
+interface CheckoutLine {
+  sneakerId: string;
+  name: string;
+  brand: string;
+  image: string;
+  price: number;
+  size: string;
+  color: string;
+  quantity: number;
+  maxStock: number;
+}
 
 function CheckoutContent() {
   const sp = useSearchParams();
@@ -30,6 +46,11 @@ function CheckoutContent() {
   const size = sp.get("size") || "";
   const requestedQty = Number(sp.get("qty") ?? 1);
   const qty = isValidQuantity(requestedQty) ? requestedQty : 1;
+
+  const { items: cartItems, ready: cartReady, clear: clearCart } = useCart();
+  // Captured at settlement so the order summary still renders once the cart
+  // has been emptied on success.
+  const [paidLines, setPaidLines] = useState<CheckoutLine[]>([]);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,64 +78,113 @@ function CheckoutContent() {
     return () => { cancelled = true; };
   }, [id, reloadKey]);
 
-  if (!id) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">404</p>
-      <h1 className="mt-3 text-xl font-bold tracking-tight">This pair isn&apos;t available.</h1>
-      <p className="mt-2 text-sm text-gray-500">The link is missing a product.</p>
-      <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-        Back to the store
-      </Link>
-    </div>
-  );
+  // Without `id` we are paying for the cart; with one, for a single pair
+  // bought straight from the product page. Both paths produce the same list.
+  let lines: CheckoutLine[];
+  let stockWarning = "";
 
-  if (result === null || result.id !== id) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-sm text-gray-400">Loading...</p>
+  if (!id) {
+    if (!cartReady) return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-400">Loading...</p>
+        </div>
       </div>
-    </div>
-  );
-
-  if (result.error) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <p className="text-xs uppercase tracking-[0.2em] text-red-400">Something went wrong</p>
-      <h1 className="mt-3 text-xl font-bold tracking-tight">We couldn&apos;t load this product.</h1>
-      <p className="mt-2 text-sm text-gray-500">Please check your connection and try again.</p>
-      <div className="mt-5 flex items-center gap-3">
-        <button
-          onClick={() => { setResult(null); setReloadKey((k) => k + 1); }}
-          className="rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
-        >
-          Try again
-        </button>
-        <Link href="/" className="text-sm text-gray-400 transition-colors hover:text-gray-900">Back to the store</Link>
+    );
+    if (paidLines.length > 0) {
+      lines = paidLines;
+    } else if (cartItems.length === 0) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+          <p className="text-xs uppercase tracking-[0.2em] text-gray-400">Cart</p>
+          <h1 className="mt-3 text-xl font-bold tracking-tight">Your cart is empty.</h1>
+          <p className="mt-2 text-sm text-gray-500">Add a pair before heading to checkout.</p>
+          <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+            Back to the store
+          </Link>
+        </div>
+      );
+    } else {
+      lines = cartItems.map((i) => ({
+        sneakerId: i.sneakerId,
+        name: i.name,
+        brand: i.brand,
+        image: i.image,
+        price: i.price,
+        size: i.size,
+        color: i.color,
+        quantity: i.quantity,
+        maxStock: i.maxStock,
+      }));
+      // Captured when the line was added, so it can go stale — the API
+      // re-checks stock and returns 409 if something sold out meanwhile.
+      const short = lines.find((l) => l.maxStock < 1 || l.quantity > l.maxStock);
+      if (short) stockWarning = `${short.brand} ${short.name} (size ${short.size}) only has ${short.maxStock} left in stock.`;
+    }
+  } else {
+    if (result === null || result.id !== id) return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-gray-300 border-t-black rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-gray-400">Loading...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
 
-  const sneaker = result.value;
-  if (!sneaker) return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      <p className="text-xs uppercase tracking-[0.2em] text-gray-400">404</p>
-      <h1 className="mt-3 text-xl font-bold tracking-tight">This pair isn&apos;t available.</h1>
-      <p className="mt-2 text-sm text-gray-500">It may have sold out or been removed from the catalogue.</p>
-      <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
-        Back to the store
-      </Link>
-    </div>
-  );
+    if (result.error) return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-xs uppercase tracking-[0.2em] text-red-400">Something went wrong</p>
+        <h1 className="mt-3 text-xl font-bold tracking-tight">We couldn&apos;t load this product.</h1>
+        <p className="mt-2 text-sm text-gray-500">Please check your connection and try again.</p>
+        <div className="mt-5 flex items-center gap-3">
+          <button
+            onClick={() => { setResult(null); setReloadKey((k) => k + 1); }}
+            className="rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
+          >
+            Try again
+          </button>
+          <Link href="/" className="text-sm text-gray-400 transition-colors hover:text-gray-900">Back to the store</Link>
+        </div>
+      </div>
+    );
+
+    if (!result.value) return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-xs uppercase tracking-[0.2em] text-gray-400">404</p>
+        <h1 className="mt-3 text-xl font-bold tracking-tight">This pair isn&apos;t available.</h1>
+        <p className="mt-2 text-sm text-gray-500">It may have sold out or been removed from the catalogue.</p>
+        <Link href="/" className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800">
+          Back to the store
+        </Link>
+      </div>
+    );
+
+    const product = result.value;
+    const colorObj = product.colors.find(c => c.name === color);
+    const selectedSize = product.sizes.find(s => s.size === size);
+    lines = [{
+      sneakerId: product.id,
+      name: product.name,
+      brand: product.brand,
+      image: colorObj?.image || product.heroImage,
+      price: product.price,
+      size,
+      color,
+      quantity: qty,
+      maxStock: selectedSize ? (selectedSize.available ? selectedSize.stock : 0) : 0,
+    }];
+    if (selectedSize && (!selectedSize.available || selectedSize.stock < qty)) {
+      stockWarning = `Size ${size} only has ${selectedSize.stock} left in stock. Go back and pick another size or quantity.`;
+    }
+  }
 
   // Display-only mirror of the server's pricing; the API recomputes these
   // from the catalogue price and never accepts client-supplied amounts.
-  const { subtotal: sub, deliveryFee: delivery, tax, totalAmount: total } = computeTotals(sneaker.price, qty);
-  const selectedSize = sneaker.sizes.find(s => s.size === size);
-  const outOfStock = !!selectedSize && (!selectedSize.available || selectedSize.stock < qty);
+  const { subtotal: sub, deliveryFee: delivery, tax, totalAmount: total } =
+    computeTotalsForLines(lines.map((l) => ({ unitPrice: l.price, quantity: l.quantity })));
+  const outOfStock = stockWarning !== "";
   const valid = name.trim() && email.trim() && phone.trim() && address.trim() && city.trim() && !outOfStock;
-
-  const colorObj = sneaker.colors.find(c => c.name === color);
-  const img = colorObj?.image || sneaker.heroImage;
 
   const goToStep = (newStep: Step) => {
     setStepKey(k => k + 1);
@@ -128,6 +198,10 @@ function CheckoutContent() {
     if (verifyData.status !== "SUCCESSFUL") {
       throw new Error(verifyData.message || "Payment verification failed");
     }
+    // Snapshot first, then empty the cart — the summary keeps rendering the
+    // lines that were actually paid for.
+    setPaidLines(lines);
+    if (!id) clearCart();
     goToStep("done");
   };
 
@@ -141,7 +215,9 @@ function CheckoutContent() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sneakerId: sneaker.id, color, size, quantity: qty,
+            items: lines.map((l) => ({
+              sneakerId: l.sneakerId, color: l.color, size: l.size, quantity: l.quantity,
+            })),
             customerName: name, customerEmail: email, customerPhone: phone,
             deliveryAddress: `${address}, ${city}`, notes,
           }),
@@ -211,14 +287,11 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <nav className="border-b border-gray-200 bg-white">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-light.png" alt="SneakerVault" width={40} height={40} className="h-10 w-10 rounded-lg object-cover" />
-            <span className="text-lg font-bold tracking-tight">SneakerVault</span>
-          </Link>
-        </div>
-      </nav>
+      <SiteNav>
+        {!id && (
+          <Link href="/cart" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">Edit cart</Link>
+        )}
+      </SiteNav>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Progress */}
@@ -272,9 +345,9 @@ function CheckoutContent() {
                       <p className="flex items-center gap-2"><span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-[10px]">✓</span> Email receipt</p>
                     </div>
                   </div>
-                  {outOfStock && (
+                  {stockWarning && (
                     <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
-                      Size {size} only has {selectedSize?.stock ?? 0} left in stock. Go back and pick another size or quantity.
+                      {stockWarning}
                     </p>
                   )}
                   <button onClick={pay} disabled={outOfStock} className="w-full py-3.5 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 btn-press shadow-lg shadow-black/10">
@@ -328,19 +401,28 @@ function CheckoutContent() {
           {/* Summary */}
           <div className="md:col-span-1">
             <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm sticky top-20 space-y-4">
-              <div className="flex gap-3">
-                <Image src={img} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-gray-50" />
-                <div>
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{sneaker.brand}</p>
-                  <p className="text-sm font-medium">{sneaker.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{size} · {color} · ×{qty}</p>
-                </div>
+              <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+                {lines.map((l) => (
+                  <div key={`${l.sneakerId}|${l.size}|${l.color}`} className="flex gap-3">
+                    <Image src={l.image} alt="" width={64} height={64} className="w-16 h-16 rounded-xl object-cover bg-gray-50 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{l.brand}</p>
+                      <p className="text-sm font-medium truncate">{l.name}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {l.size}{l.color ? ` · ${l.color}` : ""} · ×{l.quantity}
+                      </p>
+                    </div>
+                    <p className="text-xs font-semibold shrink-0 tabular-nums">
+                      {CURRENCY_SYMBOL} {(l.price * l.quantity).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
               </div>
               <div className="border-t border-gray-100 pt-3 space-y-1.5 text-xs">
-                <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span>{CURRENCY_SYMBOL} {sub.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Delivery</span><span>{CURRENCY_SYMBOL} {delivery.toFixed(2)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-400">Tax ({Math.round(TAX_RATE * 100)}%)</span><span>{CURRENCY_SYMBOL} {tax.toFixed(2)}</span></div>
-                <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-100"><span>Total</span><span>{CURRENCY_SYMBOL} {total.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Subtotal</span><span className="tabular-nums">{CURRENCY_SYMBOL} {sub.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Delivery</span><span className="tabular-nums">{CURRENCY_SYMBOL} {delivery.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-400">Tax ({Math.round(TAX_RATE * 100)}%)</span><span className="tabular-nums">{CURRENCY_SYMBOL} {tax.toFixed(2)}</span></div>
+                <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-100"><span>Total</span><span className="tabular-nums">{CURRENCY_SYMBOL} {total.toFixed(2)}</span></div>
               </div>
             </div>
           </div>

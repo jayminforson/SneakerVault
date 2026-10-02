@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { CURRENCY_SYMBOL, paymentMethodsSentence } from "@/lib/config";
 import { convertSize } from "@/lib/size-conversion";
+import SiteNav from "@/components/site-nav";
+import { useCart } from "@/components/cart-context";
 
 interface Color { name: string; hex: string; image: string; }
 interface Size { size: string; available: boolean; stock: number; }
@@ -30,6 +32,8 @@ function DetailContent() {
   const [qty, setQty] = useState(1);
   const [sizeScale, setSizeScale] = useState<"US" | "EUR" | "UK" | "CM">("US");
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [added, setAdded] = useState(false);
+  const { add } = useCart();
 
   useEffect(() => {
     if (!id) return;
@@ -128,26 +132,38 @@ function DetailContent() {
     router.push(`/checkout?id=${sneaker.id}&color=${encodeURIComponent(color.name)}&size=${encodeURIComponent(sneaker.sizes[selSize].size)}&qty=${qty}`);
   };
 
+  const handleAddToCart = () => {
+    if (selSize === null || added) return;
+    const chosen = sneaker.sizes[selSize];
+    add(
+      {
+        sneakerId: sneaker.id,
+        name: sneaker.name,
+        brand: sneaker.brand,
+        price: sneaker.price,
+        image: color.image || sneaker.heroImage,
+        size: chosen.size,
+        color: color.name || "",
+        maxStock: chosen.stock,
+      },
+      qty
+    );
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1600);
+  };
+
   const discount = sneaker.originalPrice ? Math.round((1 - sneaker.price / sneaker.originalPrice) * 100) : 0;
 
   return (
     <div className="min-h-screen">
       {/* Nav */}
-      <nav className="border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur-md z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-light.png" alt="SneakerVault" width={40} height={40} className="h-10 w-10 rounded-lg object-cover" />
-            <span className="text-lg font-bold tracking-tight">SneakerVault</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-900 transition-colors hidden sm:inline">Admin</Link>
-            <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-900 transition-colors flex items-center gap-1">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-              Back
-            </button>
-          </div>
-        </div>
-      </nav>
+      <SiteNav>
+        <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-900 transition-colors hidden sm:inline">Admin</Link>
+        <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-900 transition-colors flex items-center gap-1">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+          Back
+        </button>
+      </SiteNav>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
@@ -285,13 +301,22 @@ function DetailContent() {
             </div>
 
             {/* Buy */}
-            <button
-              onClick={handleBuy}
-              disabled={selSize === null}
-              className={`w-full py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 btn-press ${selSize === null ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/15"}`}
-            >
-              {selSize === null ? "Select a size" : `Buy Now · ${CURRENCY_SYMBOL} ${(sneaker.price * qty).toFixed(2)}`}
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddToCart}
+                disabled={selSize === null}
+                className={`flex-1 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 btn-press border ${added ? "border-green-600 bg-green-50 text-green-700" : selSize === null ? "border-gray-200 bg-gray-50 text-gray-300 cursor-not-allowed" : "border-black text-black hover:bg-black hover:text-white"}`}
+              >
+                {added ? "Added ✓" : "Add to cart"}
+              </button>
+              <button
+                onClick={handleBuy}
+                disabled={selSize === null}
+                className={`flex-[1.3] py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 btn-press ${selSize === null ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-black text-white hover:bg-gray-800 shadow-lg shadow-black/10 hover:shadow-xl hover:shadow-black/15"}`}
+              >
+                {selSize === null ? "Select a size" : `Buy Now · ${CURRENCY_SYMBOL} ${(sneaker.price * qty).toFixed(2)}`}
+              </button>
+            </div>
 
             <div className="flex gap-4 sm:gap-6 text-xs text-gray-400 pt-1">
               <span className="flex items-center gap-1.5">

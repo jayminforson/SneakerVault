@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CURRENCY_SYMBOL, paymentMethodsSentence } from "@/lib/config";
+import SiteNav from "@/components/site-nav";
+import QuickAdd, { QuickAddSeed } from "@/components/quick-add";
 
 interface Sneaker {
   id: string; name: string; brand: string; price: number;
@@ -20,6 +22,7 @@ export default function Home() {
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [quickAdd, setQuickAdd] = useState<QuickAddSeed | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,18 +65,10 @@ export default function Home() {
   return (
     <div className="min-h-screen">
       {/* Nav */}
-      <nav className="border-b border-gray-100 sticky top-0 bg-white/80 backdrop-blur-md z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <Image src="/logo-light.png" alt="SneakerVault" width={40} height={40} className="h-10 w-10 rounded-lg object-cover" />
-            <span className="text-lg font-bold tracking-tight">SneakerVault</span>
-          </Link>
-          <div className="flex items-center gap-4">
-            <span className="text-xs text-gray-400 hidden sm:inline">No account needed</span>
-            <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">Admin</Link>
-          </div>
-        </div>
-      </nav>
+      <SiteNav>
+        <span className="text-xs text-gray-400 hidden sm:inline">No account needed</span>
+        <Link href="/admin" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">Admin</Link>
+      </SiteNav>
 
       {/* Hero */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-10 sm:pt-14 pb-6 sm:pb-8 animate-fade-in">
@@ -141,42 +136,52 @@ export default function Home() {
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5 stagger-children">
             {filtered.map(s => (
-              <Link key={s.id} href={`/sneaker?id=${s.id}`} className="group card-hover">
-                <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 relative">
-                  <Image
-                    src={s.heroImage}
-                    alt={s.name}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    className="object-cover img-zoom"
-                  />
-                  {s.originalPrice && (
-                    <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
-                      {Math.round((1 - s.price / s.originalPrice) * 100)}% OFF
-                    </div>
-                  )}
-                </div>
-                <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{s.brand}</p>
-                <p className="text-sm font-medium mt-0.5 truncate">{s.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-sm font-bold">{CURRENCY_SYMBOL} {s.price.toFixed(2)}</span>
-                  {s.originalPrice && <span className="text-xs text-gray-400 line-through">{CURRENCY_SYMBOL} {s.originalPrice.toFixed(2)}</span>}
-                </div>
-                <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-500">
-                  <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" /></svg>
-                  <span className="font-medium text-gray-700">{s.rating.toFixed(1)}</span>
-                  <span>· {s.reviewCount} review{s.reviewCount === 1 ? "" : "s"}</span>
-                </div>
-                <div className="flex gap-1.5 mt-2">
-                  {s.colors?.slice(0, 4).map((c, i) => (
-                    <div key={i} className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: c.hex }} />
-                  ))}
-                </div>
-              </Link>
+              <div key={s.id} className="group card-hover">
+                <Link href={`/sneaker?id=${s.id}`} className="block">
+                  <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden mb-3 relative">
+                    <Image
+                      src={s.heroImage}
+                      alt={s.name}
+                      fill
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      className="object-cover img-zoom"
+                    />
+                    {s.originalPrice && (
+                      <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                        {Math.round((1 - s.price / s.originalPrice) * 100)}% OFF
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium">{s.brand}</p>
+                  <p className="text-sm font-medium mt-0.5 truncate">{s.name}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-sm font-bold">{CURRENCY_SYMBOL} {s.price.toFixed(2)}</span>
+                    {s.originalPrice && <span className="text-xs text-gray-400 line-through">{CURRENCY_SYMBOL} {s.originalPrice.toFixed(2)}</span>}
+                  </div>
+                  <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-500">
+                    <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" /></svg>
+                    <span className="font-medium text-gray-700">{s.rating.toFixed(1)}</span>
+                    <span>· {s.reviewCount} review{s.reviewCount === 1 ? "" : "s"}</span>
+                  </div>
+                  <div className="flex gap-1.5 mt-2">
+                    {s.colors?.slice(0, 4).map((c, i) => (
+                      <div key={i} className="w-3.5 h-3.5 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: c.hex }} />
+                    ))}
+                  </div>
+                </Link>
+                <button
+                  onClick={() => setQuickAdd({ id: s.id, name: s.name, brand: s.brand, price: s.price, heroImage: s.heroImage })}
+                  className="mt-2 w-full py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-black hover:text-white hover:border-black transition-all duration-200 active:scale-[0.98]"
+                >
+                  + Add
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
+
+      {quickAdd && <QuickAdd key={quickAdd.id} seed={quickAdd} onClose={() => setQuickAdd(null)} />}
     </div>
   );
 }

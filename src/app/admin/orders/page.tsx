@@ -6,6 +6,17 @@ import Image from "next/image";
 import { CURRENCY_SYMBOL } from "@/lib/config";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
+interface OrderLine {
+  sneakerId: string;
+  name: string;
+  brand: string;
+  size: string;
+  color: string;
+  quantity: number;
+  unitPrice: number;
+  image: string;
+}
+
 interface Order {
   orderId: string;
   sneakerName: string;
@@ -13,6 +24,8 @@ interface Order {
   color: string;
   size: string;
   quantity: number;
+  /** Multi-item orders. Absent on legacy rows — fall back to the fields above. */
+  items?: OrderLine[];
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -24,6 +37,21 @@ interface Order {
   paymentChannel?: string;
   createdAt: string;
   date: string;
+}
+
+function orderLines(order: Order): OrderLine[] {
+  return order.items ?? [{
+    sneakerId: "",
+    name: order.sneakerName,
+    brand: order.brand,
+    size: order.size,
+    color: order.color,
+    quantity: order.quantity,
+    // Legacy rows predate per-line pricing; the order total already includes
+    // delivery and tax, so no line amount is shown for them.
+    unitPrice: 0,
+    image: "",
+  }];
 }
 
 const STATUSES: Order["status"][] = ["PENDING", "PAID", "FULFILLED", "CANCELLED"];
@@ -197,7 +225,11 @@ export default function AdminOrders() {
                   {/* Status dot + product */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900 truncate">{order.brand} {order.sneakerName}</span>
+                      <span className="text-sm font-semibold text-gray-900 truncate">
+                        {orderLines(order).length === 1
+                          ? `${order.brand} ${order.sneakerName}`
+                          : `${orderLines(order).length} items`}
+                      </span>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[order.status]}`}>
                         {order.status}
                       </span>
@@ -236,10 +268,28 @@ export default function AdminOrders() {
                       </div>
                       {/* Product + payment */}
                       <div>
-                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">👟 Item</h3>
-                        <div className="space-y-1 text-sm text-gray-700">
-                          <p>{order.brand} {order.sneakerName}</p>
-                          <p className="text-gray-500">Size {order.size} · {order.color} · Qty {order.quantity}</p>
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                          👟 Item{orderLines(order).length === 1 ? "" : "s"}
+                        </h3>
+                        <div className="space-y-2 text-sm text-gray-700">
+                          {orderLines(order).map((line, idx) => (
+                            <div key={`${line.sneakerId || idx}-${line.size}-${idx}`} className="flex items-start gap-2">
+                              {line.image && (
+                                <Image unoptimized src={line.image} alt="" width={40} height={40} className="w-10 h-10 rounded-lg object-cover bg-gray-50 shrink-0" />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate">{line.brand} {line.name}</p>
+                                <p className="text-gray-500 text-xs">
+                                  Size {line.size}{line.color ? ` · ${line.color}` : ""} · Qty {line.quantity}
+                                </p>
+                              </div>
+                              {order.items && (
+                                <p className="text-xs font-semibold shrink-0 tabular-nums">
+                                  {CURRENCY_SYMBOL} {(line.unitPrice * line.quantity).toFixed(2)}
+                                </p>
+                              )}
+                            </div>
+                          ))}
                           {order.paymentChannel && <p className="text-gray-500">💳 Paid via {order.paymentChannel}</p>}
                         </div>
                       </div>

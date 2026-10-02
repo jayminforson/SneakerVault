@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CartProvider } from "@/components/cart-context";
 
 // The favicon comes from the src/app/icon.png file convention, which serves it
 // at an absolute /icon.png. A metadata.icons entry would emit a relative
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-white text-gray-900 min-h-screen">{children}</body>
+      <body className="bg-white text-gray-900 min-h-screen">
+        <CartProvider>{children}</CartProvider>
+      </body>
     </html>
   );
 }

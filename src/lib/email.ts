@@ -14,6 +14,18 @@ function getResend(): Resend | null {
 const FROM_EMAIL = process.env.FROM_EMAIL || "SneakerVault <receipts@sneakervault.live>";
 const OWNER_EMAIL = process.env.OWNER_EMAIL || "";
 
+/** One line as it appears in either email. */
+export interface EmailLine {
+  name: string;
+  brand: string;
+  size: string;
+  color: string;
+  quantity: number;
+  unitPrice: number;
+  lineTotal: number;
+  image?: string;
+}
+
 export interface OrderEmailData {
   orderId: string;
   customerName: string;
@@ -23,6 +35,8 @@ export interface OrderEmailData {
   size: string;
   color: string;
   quantity: number;
+  /** Always populated — legacy single-item orders are wrapped into one line. */
+  items: EmailLine[];
   subtotal: number;
   deliveryFee: number;
   tax: number;
@@ -32,6 +46,17 @@ export interface OrderEmailData {
   deliveryAddress: string;
   date: string;
   heroImage?: string;
+}
+
+const lineMeta = (l: EmailLine) =>
+  `Size: ${l.size} · Color: ${l.color || "—"} · Qty: ${l.quantity}`;
+
+function receiptSubject(order: OrderEmailData): string {
+  const detail =
+    order.items.length === 1
+      ? `${order.brand} ${order.sneakerName}`
+      : `${order.items.length} items`;
+  return `Order Confirmed — ${detail} (${order.orderId})`;
 }
 
 function generateCustomerReceiptHTML(order: OrderEmailData): string {
@@ -66,13 +91,16 @@ function generateCustomerReceiptHTML(order: OrderEmailData): string {
 
       <!-- Product -->
       <div style="margin-bottom:24px;">
-        <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;">Item</h3>
-        <div style="display:flex;gap:12px;">
-          <div>
-            <p style="font-size:14px;font-weight:600;margin:0;color:#111;">${order.brand} ${order.sneakerName}</p>
-            <p style="font-size:13px;color:#666;margin:4px 0 0;">Size: ${order.size} · Color: ${order.color} · Qty: ${order.quantity}</p>
+        <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 12px;">${order.items.length === 1 ? "Item" : "Items"}</h3>
+        ${order.items.map((line) => `
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #f0f0f0;">
+          ${line.image ? `<img src="${line.image}" alt="" width="56" height="56" style="width:56px;height:56px;object-fit:cover;border-radius:6px;background:#f5f5f5;flex-shrink:0;" />` : ""}
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:14px;font-weight:600;margin:0;color:#111;">${line.brand} ${line.name}</p>
+            <p style="font-size:13px;color:#666;margin:4px 0 0;">${lineMeta(line)}</p>
           </div>
-        </div>
+          <p style="font-size:14px;font-weight:600;margin:0;color:#111;text-align:right;white-space:nowrap;">${CURRENCY_SYMBOL} ${line.lineTotal.toFixed(2)}</p>
+        </div>`).join("")}
       </div>
 
       <!-- Payment Breakdown -->
@@ -118,9 +146,10 @@ Thanks for shopping with us, ${order.customerName}.
 Order ID: ${order.orderId}
 Date: ${order.date}
 
-ITEM
-${order.brand} ${order.sneakerName}
-Size: ${order.size} - Color: ${order.color} - Qty: ${order.quantity}
+ITEM${order.items.length === 1 ? "" : "S"}
+${order.items.map((line) => `- ${line.brand} ${line.name}
+  ${lineMeta(line)}
+  ${CURRENCY_SYMBOL} ${line.lineTotal.toFixed(2)}`).join("\n")}
 
 PAYMENT
 Subtotal: ${CURRENCY_SYMBOL} ${order.subtotal.toFixed(2)}
@@ -172,10 +201,14 @@ function generateOwnerNotificationHTML(order: OrderEmailData): string {
 
       <!-- Product -->
       <div style="margin-bottom:20px;">
-        <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">👟 Product</h3>
-        ${order.heroImage ? `<div style="margin-bottom:12px;"><img src="${order.heroImage}" alt="${order.sneakerName}" style="width:120px;height:120px;object-fit:cover;border-radius:8px;background:#f5f5f5;" /></div>` : ""}
-        <p style="font-size:14px;color:#333;margin:0;font-weight:600;">${order.brand} ${order.sneakerName}</p>
-        <p style="font-size:13px;color:#666;margin:4px 0 0;">Size: ${order.size} · Color: ${order.color} · Qty: ${order.quantity}</p>
+        <h3 style="font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin:0 0 8px;">👟 Product${order.items.length === 1 ? "" : "s"}</h3>
+        ${order.items.map((line) => `
+        <div style="padding:8px 0;border-bottom:1px solid #f0f0f0;">
+          ${line.image ? `<div style="margin-bottom:8px;"><img src="${line.image}" alt="${line.name}" style="width:100px;height:100px;object-fit:cover;border-radius:8px;background:#f5f5f5;" /></div>` : ""}
+          <p style="font-size:14px;color:#333;margin:0;font-weight:600;">${line.brand} ${line.name}</p>
+          <p style="font-size:13px;color:#666;margin:4px 0 0;">${lineMeta(line)}</p>
+          <p style="font-size:13px;color:#333;margin:4px 0 0;font-weight:600;">${CURRENCY_SYMBOL} ${line.lineTotal.toFixed(2)}</p>
+        </div>`).join("")}
       </div>
 
       <!-- Payment -->
@@ -209,9 +242,10 @@ ${order.customerName}
 ${order.customerEmail}
 ${order.deliveryAddress}
 
-PRODUCT
-${order.brand} ${order.sneakerName}
-Size: ${order.size} - Color: ${order.color} - Qty: ${order.quantity}
+PRODUCT${order.items.length === 1 ? "" : "S"}
+${order.items.map((line) => `- ${line.brand} ${line.name}
+  ${lineMeta(line)}
+  ${CURRENCY_SYMBOL} ${line.lineTotal.toFixed(2)}`).join("\n")}
 
 PAYMENT
 Amount: ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}
@@ -241,7 +275,7 @@ export async function sendCustomerReceipt(order: OrderEmailData): Promise<boolea
       // Replies must reach a monitored mailbox: the root domain has no MX, so
       // anything addressed back to receipts@sneakervault.live would bounce.
       replyTo: OWNER_EMAIL || undefined,
-      subject: `Order Confirmed — ${order.brand} ${order.sneakerName} (${order.orderId})`,
+      subject: receiptSubject(order),
       html: generateCustomerReceiptHTML(order),
       text: generateCustomerReceiptText(order),
     });
@@ -270,7 +304,7 @@ export async function sendOwnerNotification(order: OrderEmailData): Promise<bool
       from: FROM_EMAIL,
       to: OWNER_EMAIL,
       replyTo: OWNER_EMAIL || undefined,
-      subject: `🛍️ New Order: ${order.brand} ${order.sneakerName} — ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}`,
+      subject: `🛍️ New Order: ${order.items.length === 1 ? `${order.brand} ${order.sneakerName}` : `${order.items.length} items`} — ${CURRENCY_SYMBOL} ${order.totalAmount.toFixed(2)}`,
       html: generateOwnerNotificationHTML(order),
       text: generateOwnerNotificationText(order),
     });
@@ -283,15 +317,42 @@ export async function sendOwnerNotification(order: OrderEmailData): Promise<bool
 }
 
 export function orderToEmailData(order: Order, paymentMethod: string, heroImage = ""): OrderEmailData {
+  // Pre-multi-item rows have no `items`, so their top-level fields become a
+  // single line and every renderer below stays branch-free.
+  const items: EmailLine[] = (order.items ?? [
+    {
+      sneakerId: order.sneakerId,
+      name: order.sneakerName,
+      brand: order.brand,
+      size: order.size,
+      color: order.color,
+      quantity: order.quantity,
+      unitPrice: order.quantity > 0 ? order.subtotal / order.quantity : 0,
+      image: "",
+    },
+  ]).map((line) => ({
+    name: line.name,
+    brand: line.brand,
+    size: line.size,
+    color: line.color,
+    quantity: line.quantity,
+    unitPrice: line.unitPrice,
+    lineTotal: Math.round(line.unitPrice * line.quantity * 100) / 100,
+    image: line.image || undefined,
+  }));
+
+  const first = items[0];
+
   return {
     orderId: order.orderId,
     customerName: order.customerName,
     customerEmail: order.customerEmail,
-    sneakerName: order.sneakerName,
-    brand: order.brand,
-    size: order.size,
-    color: order.color,
+    sneakerName: first.name,
+    brand: first.brand,
+    size: first.size,
+    color: first.color,
     quantity: order.quantity,
+    items,
     subtotal: order.subtotal,
     deliveryFee: order.deliveryFee,
     tax: order.tax,

@@ -152,21 +152,23 @@ export function insertOrder(o: {
   paymentChannel?: string;
   createdAt: string;
   date: string;
+  /** Pre-serialised JSON for the `items jsonb` column. */
+  items: string;
 }): Query {
   return {
     text: `INSERT INTO orders (order_id, sneaker_id, sneaker_name, brand, color, size,
                                quantity, customer_name, customer_email, customer_phone,
                                delivery_address, notes, subtotal, delivery_fee, tax,
                                total_amount, currency, status, payment_reference,
-                               payment_channel, created_at, date)
+                               payment_channel, created_at, date, items)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-                   $15, $16, $17, $18, $19, $20, $21, $22)`,
+                   $15, $16, $17, $18, $19, $20, $21, $22, $23::jsonb)`,
     params: [
       o.orderId, o.sneakerId, o.sneakerName, o.brand, o.color, o.size,
       o.quantity, o.customerName, o.customerEmail, o.customerPhone,
       o.deliveryAddress, o.notes, o.subtotal, o.deliveryFee, o.tax,
       o.totalAmount, o.currency, o.status, o.paymentReference ?? null,
-      o.paymentChannel ?? null, o.createdAt, o.date,
+      o.paymentChannel ?? null, o.createdAt, o.date, o.items,
     ],
   };
 }
@@ -192,6 +194,8 @@ export function updateOrder(o: {
   status: string;
   paymentReference?: string;
   paymentChannel?: string;
+  /** Pre-serialised JSON for the `items jsonb` column. */
+  items: string;
 }): Query {
   return {
     text: `UPDATE orders SET
@@ -200,13 +204,14 @@ export function updateOrder(o: {
              customer_phone = $9, delivery_address = $10, notes = $11,
              subtotal = $12, delivery_fee = $13, tax = $14, total_amount = $15,
              currency = $16, status = $17, payment_reference = $18,
-             payment_channel = $19
-           WHERE order_id = $20`,
+             payment_channel = $19, items = $20::jsonb
+           WHERE order_id = $21`,
     params: [
       o.sneakerId, o.sneakerName, o.brand, o.color, o.size, o.quantity,
       o.customerName, o.customerEmail, o.customerPhone, o.deliveryAddress,
       o.notes, o.subtotal, o.deliveryFee, o.tax, o.totalAmount, o.currency,
-      o.status, o.paymentReference ?? null, o.paymentChannel ?? null, o.orderId,
+      o.status, o.paymentReference ?? null, o.paymentChannel ?? null,
+      o.items, o.orderId,
     ],
   };
 }

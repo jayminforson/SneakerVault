@@ -46,13 +46,25 @@ export async function settleOrder(
     paymentChannel: channel,
     paymentReference: reference,
   });
-  await decrementStock(order.sneakerId, order.size, order.quantity);
+
+  // One stock movement per line. Legacy orders carry no `items`, so their
+  // single top-level triple stands in for the list.
+  const lines = order.items ?? [{
+    sneakerId: order.sneakerId,
+    size: order.size,
+    color: order.color,
+    quantity: order.quantity,
+  }];
+  for (const line of lines) {
+    await decrementStock(line.sneakerId, line.size, line.quantity);
+  }
 
   const sneaker = await getSneakerById(order.sneakerId);
+  const hero = order.items?.[0]?.image || sneaker?.heroImage || "";
   const { receiptSent, ownerNotified } = await notifyOrderPaid(
     settled ?? order,
     channel,
-    sneaker?.heroImage ?? ""
+    hero
   );
 
   return { order: settled ?? order, receiptSent, ownerNotified, alreadyProcessed: false };

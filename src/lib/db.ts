@@ -32,6 +32,17 @@ export interface Sneaker {
   tags: string[];
 }
 
+export interface OrderItem {
+  sneakerId: string;
+  name: string;
+  brand: string;
+  size: string;
+  color: string;
+  quantity: number;
+  unitPrice: number;
+  image: string;
+}
+
 export interface Order {
   orderId: string;
   sneakerId: string;
@@ -40,6 +51,11 @@ export interface Order {
   color: string;
   size: string;
   quantity: number;
+  /**
+   * Full line list for multi-item carts. Legacy single-item orders have no
+   * value here — callers fall back to the top-level fields above.
+   */
+  items?: OrderItem[];
   customerName: string;
   customerEmail: string;
   customerPhone: string;
@@ -103,6 +119,7 @@ interface OrderRow {
   color: string;
   size: string;
   quantity: number;
+  items: OrderItem[] | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -146,6 +163,7 @@ function toOrder(row: OrderRow): Order {
     color: row.color,
     size: row.size,
     quantity: Number(row.quantity),
+    items: row.items ?? undefined,
     customerName: row.customer_name,
     customerEmail: row.customer_email,
     customerPhone: row.customer_phone,
@@ -252,7 +270,7 @@ export async function getOrders(): Promise<Order[]> {
 }
 
 export async function addOrder(order: Order): Promise<Order> {
-  await run(q.insertOrder(order));
+  await run(q.insertOrder({ ...order, items: JSON.stringify(order.items ?? null) }));
   return order;
 }
 
@@ -268,7 +286,7 @@ export async function updateOrder(orderId: string, updates: Partial<Order>): Pro
   const patch = definedOnly(updates);
   const merged: Order = { ...existing, ...patch, orderId };
 
-  await run(q.updateOrder(merged));
+  await run(q.updateOrder({ ...merged, items: JSON.stringify(merged.items ?? null) }));
   return (await getOrderById(orderId)) ?? null;
 }
 

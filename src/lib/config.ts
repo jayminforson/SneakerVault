@@ -29,10 +29,22 @@ export interface Totals {
   currency: string;
 }
 
+/** One priced line of an order. */
+export interface PricedLine {
+  unitPrice: number;
+  quantity: number;
+}
+
+/** Upper bound on distinct lines in a single order, to keep abuse bounded. */
+export const MAX_ORDER_LINES = 20;
+
 // Single source of truth for pricing. The API recomputes these from the
-// catalogue price — client-supplied amounts are never trusted.
-export function computeTotals(unitPrice: number, quantity: number): Totals {
-  const subtotal = round(unitPrice * quantity);
+// catalogue price — client-supplied amounts are never trusted. Delivery is
+// charged once per order, regardless of how many lines it contains.
+export function computeTotalsForLines(lines: readonly PricedLine[]): Totals {
+  const subtotal = round(
+    lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0)
+  );
   const deliveryFee = DELIVERY_FEE;
   const tax = round(subtotal * TAX_RATE);
   return {
@@ -42,6 +54,10 @@ export function computeTotals(unitPrice: number, quantity: number): Totals {
     totalAmount: round(subtotal + deliveryFee + tax),
     currency: CURRENCY,
   };
+}
+
+export function computeTotals(unitPrice: number, quantity: number): Totals {
+  return computeTotalsForLines([{ unitPrice, quantity }]);
 }
 
 export function isValidQuantity(value: unknown): value is number {
