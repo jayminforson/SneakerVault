@@ -211,7 +211,7 @@ function DetailContent() {
 
             <div className="flex items-baseline gap-3">
               <span className="text-2xl sm:text-3xl font-bold">{CURRENCY_SYMBOL} {sneaker.price.toFixed(2)}</span>
-              {sneaker.originalPrice && (
+              {sneaker.originalPrice && sneaker.originalPrice > sneaker.price && (
                 <span className="text-gray-400 line-through text-lg">{CURRENCY_SYMBOL} {sneaker.originalPrice.toFixed(2)}</span>
               )}
             </div>

@@ -146,7 +146,7 @@ export default function Home() {
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                       className="object-cover img-zoom"
                     />
-                    {s.originalPrice && (
+                    {s.originalPrice && s.originalPrice > s.price && (
                       <div className="absolute top-2 left-2 bg-black text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">
                         {Math.round((1 - s.price / s.originalPrice) * 100)}% OFF
                       </div>
@@ -156,7 +156,7 @@ export default function Home() {
                   <p className="text-sm font-medium mt-0.5 truncate">{s.name}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-sm font-bold">{CURRENCY_SYMBOL} {s.price.toFixed(2)}</span>
-                    {s.originalPrice && <span className="text-xs text-gray-400 line-through">{CURRENCY_SYMBOL} {s.originalPrice.toFixed(2)}</span>}
+                    {s.originalPrice && s.originalPrice > s.price && <span className="text-xs text-gray-400 line-through">{CURRENCY_SYMBOL} {s.originalPrice.toFixed(2)}</span>}
                   </div>
                   <div className="flex items-center gap-1 mt-1 text-[11px] text-gray-500">
                     <svg className="w-3 h-3 text-amber-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" /></svg>

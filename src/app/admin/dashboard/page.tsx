@@ -126,7 +126,7 @@ export default function AdminDashboard() {
                     <td className="px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">{sneaker.brand}</td>
                     <td className="px-6 py-4">
                       <span className="text-sm font-medium text-gray-900">{CURRENCY_SYMBOL} {sneaker.price.toFixed(2)}</span>
-                      {sneaker.originalPrice && (
+                      {sneaker.originalPrice && sneaker.originalPrice > sneaker.price && (
                         <span className="text-xs text-gray-400 line-through ml-2">{CURRENCY_SYMBOL} {sneaker.originalPrice.toFixed(2)}</span>
                       )}
                     </td>
