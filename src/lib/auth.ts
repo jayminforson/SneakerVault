@@ -62,13 +62,14 @@ export function isValidSessionToken(token: string | null | undefined): boolean {
   return timingSafeEqual(a, b);
 }
 
+// No maxAge: this is a browser session cookie, so closing the browser ends
+// the admin session. The token itself still expires after SESSION_TTL_SECONDS.
 export function sessionCookieOptions() {
   return {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: SESSION_TTL_SECONDS,
   };
 }
 
@@ -84,33 +85,33 @@ export function requireAdmin(request: NextRequest): NextResponse | null {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-// ─── Rate limiting ───────────────────────────────────────────────────────────
-// Per-instance and therefore best-effort on serverless, but it stops the
-// obvious online brute force of the admin password.
+// ─── Lockout ─────────────────────────────────────────────────────────────────
+// Three wrong passwords inside the window block that client for a full day.
+// Counting is keyed on client IP (there is one shared password, so the IP is
+// the only identity the server has) and persisted in Postgres, so a cold start
+// or redeploy never quietly resets somebody's lockout.
 
-const WINDOW_MS = 15 * 60 * 1000;
-const MAX_ATTEMPTS = 10;
-const buckets = new Map<string, { count: number; resetAt: number }>();
+export const MAX_FAILED_ATTEMPTS = 3;
+export const ATTEMPT_WINDOW_MS = 24 * 60 * 60 * 1000;
+export const LOCKOUT_MS = 24 * 60 * 60 * 1000;
 
 export function clientKey(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for");
   return forwarded?.split(",")[0]?.trim() || "unknown";
 }
 
-export function isRateLimited(key: string): boolean {
-  const now = Date.now();
-  if (buckets.size > 1000) pruneBuckets(now);
-  const bucket = buckets.get(key);
-  if (!bucket || now > bucket.resetAt) {
-    buckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > MAX_ATTEMPTS;
+export function isLockedOut(lockedUntil: Date | string | null | undefined): boolean {
+  if (!lockedUntil) return false;
+  const until = new Date(lockedUntil).getTime();
+  return Number.isFinite(until) && until > Date.now();
 }
 
-function pruneBuckets(now: number): void {
-  for (const [key, bucket] of buckets) {
-    if (now > bucket.resetAt) buckets.delete(key);
-  }
+// No timestamp here: the login page renders the exact expiry itself in the
+// visitor's own timezone from the lockedUntil value in the response body.
+export function lockoutMessage(): string {
+  return "Too many wrong passwords. Admin access is blocked for 24 hours.";
+}
+
+export function attemptsRemainingMessage(remaining: number): string {
+  return `Wrong password. ${remaining} attempt${remaining === 1 ? "" : "s"} left before access is blocked for 24 hours.`;
 }

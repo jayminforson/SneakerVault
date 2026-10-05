@@ -306,3 +306,56 @@ export async function getOrderByPaymentReference(reference: string): Promise<Ord
 export async function decrementStock(sneakerId: string, size: string, quantity: number): Promise<void> {
   await run(q.decrementStock(sneakerId, size, Math.trunc(quantity)));
 }
+
+// ---------- Admin login attempts ----------
+
+export interface LoginAttempt {
+  failedCount: number;
+  lastFailedAt: Date | string;
+  lockedUntil: Date | string | null;
+}
+
+interface LoginAttemptRow {
+  failed_count: number;
+  last_failed_at: Date | string;
+  locked_until: Date | string | null;
+}
+
+// These three swallow their own errors: login must keep working even if the
+// attempts table is unreachable, in which case the lockout is simply skipped.
+
+export async function getLoginAttempt(clientKey: string): Promise<LoginAttempt | null> {
+  try {
+    const rows = (await run(q.selectLoginAttempt(clientKey))) as unknown as LoginAttemptRow[];
+    const row = rows[0];
+    if (!row) return null;
+    return {
+      failedCount: row.failed_count,
+      lastFailedAt: row.last_failed_at,
+      lockedUntil: row.locked_until,
+    };
+  } catch (error) {
+    console.error("Could not read admin login attempts:", error);
+    return null;
+  }
+}
+
+export async function recordFailedLogin(
+  clientKey: string,
+  failedCount: number,
+  lockedUntil: string | null
+): Promise<void> {
+  try {
+    await run(q.upsertFailedLogin(clientKey, Math.trunc(failedCount), lockedUntil));
+  } catch (error) {
+    console.error("Could not record failed admin login:", error);
+  }
+}
+
+export async function clearLoginAttempts(clientKey: string): Promise<void> {
+  try {
+    await run(q.deleteLoginAttempt(clientKey));
+  } catch (error) {
+    console.error("Could not clear admin login attempts:", error);
+  }
+}

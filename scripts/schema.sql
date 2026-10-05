@@ -59,3 +59,13 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS items jsonb;
 
 CREATE INDEX IF NOT EXISTS orders_created_at_idx ON orders (created_at DESC);
 CREATE INDEX IF NOT EXISTS orders_payment_reference_idx ON orders (payment_reference);
+
+-- Failed admin logins per client IP. Three failures inside 24 hours block
+-- that IP from admin login for a day. Lives in Postgres rather than memory so
+-- the lockout survives serverless cold starts and redeploys.
+CREATE TABLE IF NOT EXISTS admin_login_attempts (
+  client_key text PRIMARY KEY,
+  failed_count integer NOT NULL DEFAULT 0,
+  last_failed_at timestamptz NOT NULL DEFAULT now(),
+  locked_until timestamptz
+);

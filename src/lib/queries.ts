@@ -227,3 +227,36 @@ export function decrementStock(sneakerId: string, size: string, quantity: number
     params: [quantity, sneakerId, size],
   };
 }
+
+// ---------- Admin login attempts ----------
+
+export function selectLoginAttempt(clientKey: string): Query {
+  return {
+    text: `SELECT failed_count, last_failed_at, locked_until
+           FROM admin_login_attempts WHERE client_key = $1`,
+    params: [clientKey],
+  };
+}
+
+export function upsertFailedLogin(
+  clientKey: string,
+  failedCount: number,
+  lockedUntil: string | null
+): Query {
+  return {
+    text: `INSERT INTO admin_login_attempts (client_key, failed_count, last_failed_at, locked_until)
+           VALUES ($1, $2, now(), $3)
+           ON CONFLICT (client_key) DO UPDATE
+             SET failed_count = EXCLUDED.failed_count,
+                 last_failed_at = now(),
+                 locked_until = EXCLUDED.locked_until`,
+    params: [clientKey, failedCount, lockedUntil],
+  };
+}
+
+export function deleteLoginAttempt(clientKey: string): Query {
+  return {
+    text: `DELETE FROM admin_login_attempts WHERE client_key = $1`,
+    params: [clientKey],
+  };
+}
