@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import { CURRENCY_SYMBOL } from "@/lib/config";
 import { useCart } from "@/components/cart-context";
+import { convertSize } from "@/lib/size-conversion";
 
 interface Color { name: string; hex: string; image: string; }
 interface Size { size: string; available: boolean; stock: number; }
@@ -156,7 +157,10 @@ export default function QuickAdd({ seed, onClose }: { seed: QuickAddSeed; onClos
                     disabled={!s.available || s.stock < 1}
                     className={`py-2 rounded-xl text-sm font-medium transition-all duration-200 ${!s.available || s.stock < 1 ? "bg-gray-50 text-gray-300 cursor-not-allowed line-through" : i === sizeIdx ? "bg-black text-white shadow-md scale-105" : "bg-gray-50 text-gray-900 hover:bg-gray-100 active:scale-95"}`}
                   >
-                    {stripUnit(s.size)}
+                    {/* Catalogue sizes are stored in EUR; the label promises US,
+                        so convert like the product page does (falling back to the
+                        stored value only if the scale has no row for it). */}
+                    {convertSize(s.size, "US") ?? stripUnit(s.size)}
                   </button>
                 ))}
               </div>

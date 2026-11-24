@@ -12,9 +12,14 @@ CREATE TABLE IF NOT EXISTS sneakers (
   hero_image text NOT NULL DEFAULT '',
   colors jsonb NOT NULL DEFAULT '[]'::jsonb,
   tags jsonb NOT NULL DEFAULT '[]'::jsonb,
+  images jsonb NOT NULL DEFAULT '[]'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+-- Migration for the catalogue-import gallery. Idempotent, so `npm run db:seed`
+-- can safely re-run against an existing database.
+ALTER TABLE sneakers ADD COLUMN IF NOT EXISTS images jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE TABLE IF NOT EXISTS sneaker_sizes (
   sneaker_id text NOT NULL REFERENCES sneakers(id) ON DELETE CASCADE,

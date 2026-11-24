@@ -30,6 +30,8 @@ export interface Sneaker {
   colors: SneakerColor[];
   sizes: SneakerSize[];
   tags: string[];
+  /** Extra gallery shots beyond the hero image. Empty on legacy products. */
+  images: string[];
 }
 
 export interface OrderItem {
@@ -100,7 +102,7 @@ interface SneakerRow {
   id: string;
   name: string;
   brand: string;
-  description: string;
+  description?: string;
   price: number | string;
   original_price: number | string | null;
   rating: number | string;
@@ -108,7 +110,8 @@ interface SneakerRow {
   hero_image: string;
   colors: SneakerColor[] | null;
   tags: string[] | null;
-  sizes: SneakerSize[] | null;
+  images?: string[] | null;
+  sizes?: SneakerSize[] | null;
 }
 
 interface OrderRow {
@@ -142,7 +145,9 @@ function toSneaker(row: SneakerRow): Sneaker {
     id: row.id,
     name: row.name,
     brand: row.brand,
-    description: row.description,
+    // The list query omits description/sizes/images; callers of getSneakers()
+    // never read them, and the detail query fills them in for everything else.
+    description: row.description ?? "",
     price: Number(row.price),
     originalPrice: row.original_price == null ? undefined : Number(row.original_price),
     rating: Number(row.rating),
@@ -151,6 +156,7 @@ function toSneaker(row: SneakerRow): Sneaker {
     colors: row.colors ?? [],
     sizes: row.sizes ?? [],
     tags: row.tags ?? [],
+    images: row.images ?? [],
   };
 }
 
@@ -198,6 +204,75 @@ export async function getSneakers(): Promise<Sneaker[]> {
   return rows.map(toSneaker);
 }
 
+/** A shop-grid card: the list columns plus an alternate angle for hover. */
+export interface SneakerCard {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  originalPrice?: number;
+  rating: number;
+  reviewCount: number;
+  heroImage: string;
+  hoverImage?: string;
+  colors: SneakerColor[];
+  tags: string[];
+}
+
+export interface SneakerPage {
+  items: SneakerCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export async function getSneakerPage(opts: {
+  page: number;
+  pageSize: number;
+  brand?: string;
+  search?: string;
+  sort: q.SneakerSort;
+}): Promise<SneakerPage> {
+  const rows = (await run(
+    q.selectSneakerPage({
+      brand: opts.brand,
+      search: opts.search,
+      sort: opts.sort,
+      limit: opts.pageSize,
+      offset: (opts.page - 1) * opts.pageSize,
+    })
+  )) as unknown as (SneakerRow & { hover_image: string | null; total_count: number | string })[];
+
+  // Past the last page there are no rows to carry the window count, so ask
+  // page 1 for it instead of reporting an empty catalogue.
+  let total = rows[0] ? Number(rows[0].total_count) : 0;
+  if (!rows[0] && opts.page > 1) {
+    total = (await getSneakerPage({ ...opts, page: 1 })).total;
+  }
+
+  return {
+    items: rows.map((row) => {
+      const s = toSneaker(row);
+      return {
+        id: s.id, name: s.name, brand: s.brand, price: s.price,
+        originalPrice: s.originalPrice, rating: s.rating, reviewCount: s.reviewCount,
+        heroImage: s.heroImage, hoverImage: row.hover_image ?? undefined,
+        colors: s.colors, tags: s.tags,
+      };
+    }),
+    total,
+    page: opts.page,
+    pageSize: opts.pageSize,
+    totalPages: Math.max(1, Math.ceil(total / opts.pageSize)),
+  };
+}
+
+export async function getSneakerBrands(): Promise<{ brand: string; count: number }[]> {
+  const rows = await run(q.selectSneakerBrands);
+  return rows.map((r) => ({ brand: String(r.brand), count: Number(r.count) }));
+}
+
 export async function getSneakerById(id: string): Promise<Sneaker | undefined> {
   const rows = (await run(q.selectSneakerById(id))) as unknown as SneakerRow[];
   return rows[0] ? toSneaker(rows[0]) : undefined;
@@ -233,6 +308,7 @@ function sneakerPayload(sneaker: Sneaker) {
     heroImage: sneaker.heroImage,
     colors: JSON.stringify(sneaker.colors ?? []),
     tags: JSON.stringify(sneaker.tags ?? []),
+    images: JSON.stringify(sneaker.images ?? []),
   };
 }
 

@@ -16,6 +16,7 @@ const contentPages = [
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const pages: MetadataRoute.Sitemap = [
     { url: `${BASE}/`, changeFrequency: "weekly", priority: 1 },
+    { url: `${BASE}/shop`, changeFrequency: "daily", priority: 0.9 },
     ...contentPages.map((page) => ({
       url: `${BASE}${page.path}`,
       changeFrequency: "monthly" as const,

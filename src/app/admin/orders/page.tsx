@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CURRENCY_SYMBOL } from "@/lib/config";
+import { displaySize } from "@/lib/size-conversion";
 import { useAdminAuth } from "@/hooks/use-admin-auth";
 
 interface OrderLine {
@@ -280,7 +281,7 @@ export default function AdminOrders() {
                               <div className="min-w-0 flex-1">
                                 <p className="truncate">{line.brand} {line.name}</p>
                                 <p className="text-gray-500 text-xs">
-                                  Size {line.size}{line.color ? ` · ${line.color}` : ""} · Qty {line.quantity}
+                                  Size {displaySize(line.size)}{line.color ? ` · ${line.color}` : ""} · Qty {line.quantity}
                                 </p>
                               </div>
                               {order.items && (

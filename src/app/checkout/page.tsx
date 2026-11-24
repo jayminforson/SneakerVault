@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { computeTotalsForLines, isValidQuantity, CURRENCY_SYMBOL, TAX_RATE, PAYMENT_METHODS, paymentMethodsSentence } from "@/lib/config";
+import { displaySize } from "@/lib/size-conversion";
 import SiteNav from "@/components/site-nav";
 import { useCart } from "@/components/cart-context";
 
@@ -120,7 +121,7 @@ function CheckoutContent() {
       // Captured when the line was added, so it can go stale — the API
       // re-checks stock and returns 409 if something sold out meanwhile.
       const short = lines.find((l) => l.maxStock < 1 || l.quantity > l.maxStock);
-      if (short) stockWarning = `${short.brand} ${short.name} (size ${short.size}) only has ${short.maxStock} left in stock.`;
+      if (short) stockWarning = `${short.brand} ${short.name} (size ${displaySize(short.size)}) only has ${short.maxStock} left in stock.`;
     }
   } else {
     if (result === null || result.id !== id) return (
@@ -175,7 +176,7 @@ function CheckoutContent() {
       maxStock: selectedSize ? (selectedSize.available ? selectedSize.stock : 0) : 0,
     }];
     if (selectedSize && (!selectedSize.available || selectedSize.stock < qty)) {
-      stockWarning = `Size ${size} only has ${selectedSize.stock} left in stock. Go back and pick another size or quantity.`;
+      stockWarning = `Size ${displaySize(size)} only has ${selectedSize.stock} left in stock. Go back and pick another size or quantity.`;
     }
   }
 
@@ -416,7 +417,7 @@ function CheckoutContent() {
                       <p className="text-[11px] text-gray-400 uppercase tracking-wider font-medium truncate">{l.brand}</p>
                       <p className="text-sm font-medium truncate">{l.name}</p>
                       <p className="text-xs text-gray-400 mt-0.5 truncate">
-                        {l.size}{l.color ? ` · ${l.color}` : ""} · ×{l.quantity}
+                        {displaySize(l.size)}{l.color ? ` · ${l.color}` : ""} · ×{l.quantity}
                       </p>
                       <p className="text-xs font-semibold mt-1 text-right tabular-nums">
                         {CURRENCY_SYMBOL} {(l.price * l.quantity).toFixed(2)}

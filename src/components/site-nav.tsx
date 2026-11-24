@@ -23,7 +23,9 @@ export default function SiteNav({ children }: { children?: React.ReactNode }) {
           <span className="text-lg font-bold tracking-tight">SneakerVault</span>
         </Link>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 sm:gap-5">
+          <Link href="/shop" className="text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors">Shop</Link>
+          <Link href="/#deals" className="hidden sm:inline text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors">Deals</Link>
           {children}
           <Link
             href="/cart"

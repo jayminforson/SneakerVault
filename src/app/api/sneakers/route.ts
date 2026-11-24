@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSneakers, getSneakerById, addSneaker, updateSneaker, deleteSneaker } from "@/lib/db";
+import {
+  getSneakers, getSneakerById, getSneakerPage, getSneakerBrands,
+  addSneaker, updateSneaker, deleteSneaker,
+} from "@/lib/db";
+import type { SneakerSort } from "@/lib/queries";
+
+const SORTS: SneakerSort[] = ["popular", "price-low", "price-high", "newest"];
 import { requireAdmin } from "@/lib/auth";
 import { isAllowedImageUrl, ALLOWED_IMAGE_HOST_LIST } from "@/lib/images";
 import { v4 as uuidv4 } from "uuid";
@@ -18,6 +24,14 @@ function imageHostError(body: Record<string, unknown>): string | null {
       }
     }
   }
+  const images = body.images;
+  if (Array.isArray(images)) {
+    for (const image of images) {
+      if (!isAllowedImageUrl(image)) {
+        return `Gallery image URLs must come from: ${ALLOWED_IMAGE_HOST_LIST}`;
+      }
+    }
+  }
   return null;
 }
 
@@ -29,6 +43,24 @@ export async function GET(request: NextRequest) {
     if (!sneaker) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(sneaker);
   }
+
+  // ?brands=1 → the brand list (with counts) for the shop filter.
+  if (searchParams.has("brands")) {
+    return NextResponse.json(await getSneakerBrands());
+  }
+
+  // ?page=N → one page of the shop grid. Without it the endpoint keeps
+  // returning the whole list, which the admin dashboard still relies on.
+  if (searchParams.has("page")) {
+    const page = Math.max(1, Math.trunc(Number(searchParams.get("page"))) || 1);
+    const pageSize = Math.min(48, Math.max(1, Math.trunc(Number(searchParams.get("pageSize"))) || 24));
+    const sortParam = searchParams.get("sort") as SneakerSort | null;
+    const sort: SneakerSort = sortParam && SORTS.includes(sortParam) ? sortParam : "popular";
+    const brand = searchParams.get("brand")?.trim() || undefined;
+    const search = searchParams.get("q")?.trim().slice(0, 100) || undefined;
+    return NextResponse.json(await getSneakerPage({ page, pageSize, brand, search, sort }));
+  }
+
   return NextResponse.json(await getSneakers());
 }
 
@@ -49,6 +81,7 @@ export async function POST(request: NextRequest) {
     rating: Number(body.rating) || 4.5, reviewCount: Number(body.reviewCount) || 0,
     heroImage: body.heroImage || "",
     colors: body.colors || [], sizes: body.sizes || [], tags: body.tags || [],
+    images: Array.isArray(body.images) ? body.images : [],
   };
   return NextResponse.json(await addSneaker(sneaker), { status: 201 });
 }

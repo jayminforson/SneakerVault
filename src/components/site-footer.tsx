@@ -8,6 +8,8 @@ const columns: { heading: string; links: { label: string; href: string }[] }[] =
     heading: "Shop",
     links: [
       { label: "Home", href: "/" },
+      { label: "Shop All", href: "/shop" },
+      { label: "Deals", href: "/#deals" },
       { label: "Cart", href: "/cart" },
     ],
   },
