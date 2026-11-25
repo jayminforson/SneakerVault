@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { Order } from "@/lib/db";
 import { CURRENCY_SYMBOL, TAX_RATE } from "@/lib/config";
+import { displaySize } from "@/lib/size-conversion";
 
 let resendClient: Resend | null = null;
 
@@ -49,7 +50,7 @@ export interface OrderEmailData {
 }
 
 const lineMeta = (l: EmailLine) =>
-  `Size: ${l.size} · Color: ${l.color || "—"} · Qty: ${l.quantity}`;
+  `Size: ${displaySize(l.size)} · Color: ${l.color || "—"} · Qty: ${l.quantity}`;
 
 function receiptSubject(order: OrderEmailData): string {
   const detail =

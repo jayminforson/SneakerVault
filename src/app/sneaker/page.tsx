@@ -14,7 +14,7 @@ interface Size { size: string; available: boolean; stock: number; }
 interface Sneaker {
   id: string; name: string; brand: string; description: string;
   price: number; originalPrice?: number; heroImage: string;
-  colors: Color[]; sizes: Size[]; tags: string[];
+  colors: Color[]; sizes: Size[]; tags: string[]; images?: string[];
 }
 
 
@@ -28,6 +28,7 @@ function DetailContent() {
   const [result, setResult] = useState<{ id: string; value: Sneaker | null; error: boolean } | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [selColor, setSelColor] = useState(0);
+  const [selImg, setSelImg] = useState(0);
   const [selSize, setSelSize] = useState<number | null>(null);
   const [qty, setQty] = useState(1);
   const [sizeScale, setSizeScale] = useState<"US" | "EUR" | "UK" | "CM">("US");
@@ -49,6 +50,7 @@ function DetailContent() {
         if (!data?.id) { setResult({ id, value: null, error: false }); return; }
         setResult({ id, value: data, error: false });
         setSelColor(0);
+        setSelImg(0);
         setImgLoaded(false);
         setQty(1);
         const first = data.sizes.findIndex((s: Size) => s.available);
@@ -95,7 +97,7 @@ function DetailContent() {
           >
             Try again
           </button>
-          <Link href="/" className="text-sm text-gray-400 transition-colors hover:text-gray-900">Back to the store</Link>
+          <Link href="/shop" className="text-sm text-gray-400 transition-colors hover:text-gray-900">Back to the shop</Link>
         </div>
       </div>
     </div>
@@ -119,8 +121,27 @@ function DetailContent() {
     </div>
   );
 
-  const color = sneaker.colors[selColor];
+  // Imported products carry a real gallery; legacy products only have per-colour
+  // shots, so those double as the gallery to keep the old thumbnails working.
+  const color = sneaker.colors[selColor] ?? { name: "", hex: "", image: "" };
+  const gallery: string[] =
+    sneaker.images && sneaker.images.length > 0
+      ? sneaker.images
+      : sneaker.colors.map(c => c.image).filter(Boolean);
+  const mainImage = gallery[selImg] || color.image || sneaker.heroImage;
   const stock = selSize !== null ? sneaker.sizes[selSize].stock : 0;
+
+  const selectColor = (i: number) => {
+    setSelColor(i);
+    const idx = sneaker.colors[i]?.image ? gallery.indexOf(sneaker.colors[i].image) : -1;
+    if (idx >= 0) setSelImg(idx);
+    setImgLoaded(false);
+  };
+
+  const selectImage = (i: number) => {
+    setSelImg(i);
+    setImgLoaded(false);
+  };
 
   const getDisplaySize = (s: Size) => {
     const converted = convertSize(s.size, sizeScale);
@@ -141,7 +162,7 @@ function DetailContent() {
         name: sneaker.name,
         brand: sneaker.brand,
         price: sneaker.price,
-        image: color.image || sneaker.heroImage,
+        image: mainImage,
         size: chosen.size,
         color: color.name || "",
         maxStock: chosen.stock,
@@ -172,8 +193,8 @@ function DetailContent() {
             <div className="aspect-square bg-gray-50 rounded-2xl overflow-hidden relative">
               {!imgLoaded && <div className="absolute inset-0 skeleton" />}
               <Image
-                key={color.image}
-                src={color.image || sneaker.heroImage}
+                key={mainImage}
+                src={mainImage}
                 alt={sneaker.name}
                 fill
                 sizes="(max-width: 1024px) 100vw, 50vw"
@@ -186,16 +207,16 @@ function DetailContent() {
                 </div>
               )}
             </div>
-            {/* Color thumbnails */}
-            {sneaker.colors.length > 1 && (
-              <div className="flex gap-2 mt-4">
-                {sneaker.colors.map((c, i) => (
+            {/* Gallery thumbnails — real gallery when present, colour shots otherwise */}
+            {gallery.length > 1 && (
+              <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+                {gallery.map((src, i) => (
                   <button
-                    key={i}
-                    onClick={() => { setSelColor(i); setImgLoaded(false); }}
-                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all duration-200 ${i === selColor ? "border-black shadow-md scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}
+                    key={`${src}-${i}`}
+                    onClick={() => selectImage(i)}
+                    className={`w-16 h-16 shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 ${i === selImg ? "border-black shadow-md scale-105" : "border-transparent opacity-60 hover:opacity-100"}`}
                   >
-                    <Image src={c.image || sneaker.heroImage} alt={c.name} width={64} height={64} className="w-full h-full object-cover" />
+                    <Image src={src} alt={`${sneaker.name} ${i + 1}`} width={64} height={64} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -216,7 +237,7 @@ function DetailContent() {
               )}
             </div>
 
-            <p className="text-sm text-gray-500 leading-relaxed">{sneaker.description}</p>
+            <p className="text-sm text-gray-500 leading-relaxed whitespace-pre-line">{sneaker.description}</p>
 
             {/* Tags */}
             {sneaker.tags.length > 0 && (
@@ -235,7 +256,7 @@ function DetailContent() {
                   {sneaker.colors.map((c, i) => (
                     <button
                       key={i}
-                      onClick={() => { setSelColor(i); setImgLoaded(false); }}
+                      onClick={() => selectColor(i)}
                       className={`w-9 h-9 rounded-full border-2 transition-all duration-200 ${i === selColor ? "border-black scale-110 shadow-md" : "border-gray-200 hover:border-gray-400"}`}
                       style={{ backgroundColor: c.hex }}
                       title={c.name}

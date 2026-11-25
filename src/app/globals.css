@@ -118,3 +118,93 @@ a, button { -webkit-tap-highlight-color: transparent; }
   outline-offset: 2px;
   border-radius: 4px;
 }
+
+/* ---------- Landing page motion ---------- */
+
+/* Scroll-reveal (see components/landing/motion.tsx) */
+.reveal {
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.reveal:not(.is-visible) { opacity: 0; }
+.reveal-up:not(.is-visible) { transform: translateY(48px); }
+.reveal-left:not(.is-visible) { transform: translateX(-60px); }
+.reveal-right:not(.is-visible) { transform: translateX(60px); }
+.reveal-zoom:not(.is-visible) { transform: scale(0.92); }
+
+/* Hero headline lines rising in on load */
+@keyframes heroLine {
+  from { opacity: 0; transform: translateY(40px); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+.hero-line { opacity: 0; animation: heroLine 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 30s linear infinite; }
+.animate-marquee-slow { animation: marquee 40s linear infinite; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal:not(.is-visible) { opacity: 1; transform: none; transition: none; }
+  .hero-line { opacity: 1; animation: none; }
+  .animate-marquee, .animate-marquee-slow { animation: none; }
+}
+
+/* ---------- Liquid glass ----------
+   Frosted, slightly saturated backdrop with a bright top rim and a soft
+   specular sheen, in the spirit of Apple's Liquid Glass material. */
+/* In the components layer so Tailwind utilities (absolute, etc.) still win. */
+@layer components {
+.glass {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.34));
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 36px -12px rgba(0, 0, 0, 0.16);
+  transition: box-shadow 0.3s ease, background 0.3s ease;
+}
+.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 70% at 25% 0%, rgba(255, 255, 255, 0.7), transparent 55%);
+}
+a.glass:hover, button.glass:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.5));
+}
+}
+
+/* Hero pair swapping in from either side */
+@keyframes shoeEnterRight {
+  from { opacity: 0; transform: translate3d(28%, 0, 0) rotate(8deg) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes shoeEnterLeft {
+  from { opacity: 0; transform: translate3d(-28%, 0, 0) rotate(-8deg) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}
+.shoe-enter-right { animation: shoeEnterRight 0.75s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.shoe-enter-left { animation: shoeEnterLeft 0.75s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float-soft { animation: floatSoft 5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .shoe-enter-right, .shoe-enter-left, .animate-float-soft { animation: none; }
+}

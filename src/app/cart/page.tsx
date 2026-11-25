@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { CURRENCY_SYMBOL, TAX_RATE, computeTotalsForLines } from "@/lib/config";
+import { displaySize } from "@/lib/size-conversion";
 import SiteNav from "@/components/site-nav";
 import { useCart, cartLineKey, CartItem } from "@/components/cart-context";
 
@@ -31,7 +32,7 @@ function LineRow({ item }: { item: CartItem }) {
               {item.name}
             </Link>
             <p className="text-xs text-gray-400 mt-0.5">
-              Size {item.size}{item.color ? ` · ${item.color}` : ""}
+              Size {displaySize(item.size)}{item.color ? ` · ${item.color}` : ""}
             </p>
           </div>
           <p className="text-sm font-semibold shrink-0 tabular-nums">
@@ -81,9 +82,7 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <SiteNav>
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-900 transition-colors">Continue shopping</Link>
-      </SiteNav>
+      <SiteNav />
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8">
         <h1 className="text-2xl font-bold tracking-tight">Your cart</h1>
@@ -105,7 +104,7 @@ export default function CartPage() {
               <h2 className="text-lg font-semibold">Your cart is empty</h2>
               <p className="text-sm text-gray-500 mt-1">Find a pair you like and add it here.</p>
               <Link
-                href="/"
+                href="/shop"
                 className="mt-5 inline-block rounded-xl bg-black px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800"
               >
                 Browse the catalogue

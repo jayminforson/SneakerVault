@@ -5,6 +5,11 @@ type ConvTable = { us: string; uk: string; eur: string; cm: string };
 
 // Master table: each row is an equivalent size across all scales.
 const TABLE: ConvTable[] = [
+  // 37/38 are common EU sizes on the imported catalogue; without these rows the
+  // US tab fell back to printing the raw EUR number ("US 38"), which does not
+  // exist. Values continue the table's own anchor (US 6 = EU 38.5).
+  { us: "4.5",  uk: "4",   eur: "37",   cm: "23" },
+  { us: "5.5",  uk: "5",   eur: "38",   cm: "23.5" },
   { us: "6",    uk: "5.5", eur: "38.5", cm: "24" },
   { us: "6.5",  uk: "6",   eur: "39",   cm: "24.5" },
   { us: "7",    uk: "6",   eur: "40",   cm: "25" },
@@ -57,4 +62,13 @@ export function convertSize(label: string, target: "US" | "UK" | "EUR" | "CM"): 
   const row = LOOKUP[`${parsed.scale.toLowerCase()}:${parsed.value}`];
   if (!row) return null;
   return row[target.toLowerCase() as "us" | "uk" | "eur" | "cm"];
+}
+
+// How a size is shown to the shopper. The catalogue stores the source scale
+// (the imported pairs are EU) while every picker defaults to US — so carts,
+// order summaries and receipts convert back rather than printing a raw "38"
+// next to the "5.5" the shopper just tapped. Unconvertible labels keep their
+// stored form.
+export function displaySize(label: string): string {
+  return convertSize(label, "US") ?? label.replace(/^(US|UK|EUR|EU|CM)\s*/i, "");
 }

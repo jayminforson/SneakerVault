@@ -9,9 +9,9 @@ export interface Query {
   params: unknown[];
 }
 
-const SNEAKER_COLUMNS = `
+const SNEAKER_DETAIL_COLUMNS = `
   s.id, s.name, s.brand, s.description, s.price, s.original_price,
-  s.rating, s.review_count, s.hero_image, s.colors, s.tags,
+  s.rating, s.review_count, s.hero_image, s.colors, s.tags, s.images,
   COALESCE(
     (SELECT json_agg(
        json_build_object('size', z.size, 'available', z.available, 'stock', z.stock)
@@ -20,14 +20,71 @@ const SNEAKER_COLUMNS = `
     '[]'::json
   ) AS sizes`;
 
+// The list endpoint feeds the home grid, the admin table, sitemap and the
+// feedback page — none of which read descriptions, galleries or size runs.
+// Keeping those heavy columns off the list is what stops a 171-product
+// catalogue from shipping ~400 KB of text on every page load; everything that
+// needs them fetches /api/sneakers?id=… instead.
+const SNEAKER_LIST_COLUMNS = `
+  s.id, s.name, s.brand, s.price, s.original_price,
+  s.rating, s.review_count, s.hero_image, s.colors, s.tags`;
+
 export const selectSneakers: Query = {
-  text: `SELECT ${SNEAKER_COLUMNS} FROM sneakers s ORDER BY s.name`,
+  text: `SELECT ${SNEAKER_LIST_COLUMNS} FROM sneakers s ORDER BY s.name`,
+  params: [],
+};
+
+export type SneakerSort = "popular" | "price-low" | "price-high" | "newest";
+
+const SORT_SQL: Record<SneakerSort, string> = {
+  popular: "s.review_count DESC, s.rating DESC, s.name ASC",
+  "price-low": "s.price ASC, s.name ASC",
+  "price-high": "s.price DESC, s.name ASC",
+  newest: "s.created_at DESC, s.name ASC",
+};
+
+// One page of the shop grid. Filtering, sorting and slicing all happen in
+// Postgres so the browser only ever receives the cards it is about to show.
+// `total` rides along on every row via a window function, saving a second
+// round trip for the pager. `hover_image` is the second gallery shot, used for
+// the alternate-angle swap on hover.
+export function selectSneakerPage(opts: {
+  brand?: string;
+  search?: string;
+  sort: SneakerSort;
+  limit: number;
+  offset: number;
+}): Query {
+  const where: string[] = [];
+  const params: unknown[] = [];
+  if (opts.brand) {
+    params.push(opts.brand);
+    where.push(`s.brand = $${params.length}`);
+  }
+  if (opts.search) {
+    params.push(`%${opts.search.replace(/[\\%_]/g, (c) => `\\${c}`)}%`);
+    where.push(`(s.name ILIKE $${params.length} OR s.brand ILIKE $${params.length})`);
+  }
+  params.push(opts.limit, opts.offset);
+  return {
+    text: `SELECT ${SNEAKER_LIST_COLUMNS}, s.images->>1 AS hover_image,
+                  COUNT(*) OVER() AS total_count
+           FROM sneakers s
+           ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+           ORDER BY ${SORT_SQL[opts.sort]}
+           LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params,
+  };
+}
+
+export const selectSneakerBrands: Query = {
+  text: `SELECT brand, COUNT(*)::int AS count FROM sneakers GROUP BY brand ORDER BY count DESC, brand`,
   params: [],
 };
 
 export function selectSneakerById(id: string): Query {
   return {
-    text: `SELECT ${SNEAKER_COLUMNS} FROM sneakers s WHERE s.id = $1 LIMIT 1`,
+    text: `SELECT ${SNEAKER_DETAIL_COLUMNS} FROM sneakers s WHERE s.id = $1 LIMIT 1`,
     params: [id],
   };
 }
@@ -62,14 +119,15 @@ export function insertSneaker(s: {
   heroImage: string;
   colors: string;
   tags: string;
+  images: string;
 }): Query {
   return {
     text: `INSERT INTO sneakers (id, name, brand, description, price, original_price,
-                                 rating, review_count, hero_image, colors, tags)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb)`,
+                                 rating, review_count, hero_image, colors, tags, images)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11::jsonb, $12::jsonb)`,
     params: [
       s.id, s.name, s.brand, s.description, s.price, s.originalPrice ?? null,
-      s.rating, s.reviewCount, s.heroImage, s.colors, s.tags,
+      s.rating, s.reviewCount, s.heroImage, s.colors, s.tags, s.images,
     ],
   };
 }
@@ -86,17 +144,19 @@ export function updateSneaker(s: {
   heroImage: string;
   colors: string;
   tags: string;
+  images: string;
 }): Query {
   return {
     text: `UPDATE sneakers SET
              name = $1, brand = $2, description = $3, price = $4,
              original_price = $5, rating = $6, review_count = $7,
              hero_image = $8, colors = $9::jsonb, tags = $10::jsonb,
+             images = $11::jsonb,
              updated_at = now()
-           WHERE id = $11`,
+           WHERE id = $12`,
     params: [
       s.name, s.brand, s.description, s.price, s.originalPrice ?? null,
-      s.rating, s.reviewCount, s.heroImage, s.colors, s.tags, s.id,
+      s.rating, s.reviewCount, s.heroImage, s.colors, s.tags, s.images, s.id,
     ],
   };
 }
